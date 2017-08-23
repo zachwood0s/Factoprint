@@ -45,3 +45,5 @@ class Point{
         return new Point(this.x * s, this.y * s);
     }
 }
+
+export {Point};

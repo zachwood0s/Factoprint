@@ -1,3 +1,5 @@
+import {Point} from "./Utils"
+
 interface RenderOptions{
     line_width?: number;
     color?: string;
@@ -35,4 +37,9 @@ class DrawHelper{
     static ClearScreen(ctx: CanvasRenderingContext2D){
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     }
+}
+
+
+export {
+    DrawHelper
 }

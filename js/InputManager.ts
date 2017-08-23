@@ -1,3 +1,4 @@
+import {Point} from "./Utils"
 
 const enum KeyBindings{
     MoveRight = 68,
@@ -35,4 +36,9 @@ window.onkeyup = function(e){
 }
 window.onmousemove = function(e){
     InputManager.HandleMouseMove(e.clientX, e.clientY);
+}
+
+export {
+    InputManager,
+    KeyBindings
 }
