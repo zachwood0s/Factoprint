@@ -1,4 +1,20 @@
 body{
     background:#282828;
     margin:0;
+    font-family: "Share Tech Mono";
+}
+#menu{
+    width:200px;
+    height: 100%;
+    left: -200px;
+    top:0;
+    position: fixed;
+    background:#424242;
+    padding:20px;
+    text-transform: capitalize;
+    box-sizing:border-box;
+    transition:left .3s;
+}
+#menu.open{
+    left:0;
 }

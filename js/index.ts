@@ -3,6 +3,7 @@ import {Point} from "./Utils"
 import {DrawHelper} from "./DrawHelper"
 import {InputManager} from "./InputManager"
 import {KeyBindings} from "./InputManager"
+import {DATA, Entity} from "./Entity"
 
 const COLOR_SCHEME = {
     background: "#282827",
@@ -23,13 +24,21 @@ class Editor{
     private static BORDER_WIDTH = 4;
     private static FONT_SIZE = 25;
     private static CAMERA_MOVE_SPEED = 10;
+
     private static canvas: HTMLCanvasElement;
     private static ctx: CanvasRenderingContext2D;
+
+    private static menu: HTMLDivElement;
 
     static last_mouse_grid_position: Point = new Point(0,0);
     static mouse_grid_position: Point = new Point(0,0);
 
+    static current_selected_item: string;
+
     static line_snap_type: LINE_SNAP;
+
+    static unused_ids: number[] = [];
+    static entities: Entity[] = [];
 
     static grid: number[][];
     
@@ -45,6 +54,11 @@ class Editor{
 
         this.LoadBlueprint(test);
 
+        InputManager.AddKeyEvent(false, KeyBindings.DropItem, function(){
+            Editor.current_selected_item = undefined;
+        });
+
+        this.CreateMenu();
         this.CreateGrid();
         this.Resize();
     }
@@ -107,11 +121,28 @@ class Editor{
                 y: this.GRID_SIZE*this.SQUARES_HIGH - this.canvas.height  
             }
         )
-        
+
+        //Handle Placement
+        if(this.current_selected_item && InputManager.IsMouseDown(1)){
+            this.TryPlace();
+        }
+    
 
         this.DrawCrosshairs();
         this.DrawGrid();
     }
+
+
+    static TryPlace = function(){
+        if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){
+            let id = (this.unused_ids.length > 0)?this.unused_ids.pop():this.entities.length;
+
+            
+        }
+        //console.log(this.current_selected_item);
+    }
+
+
     static DrawCrosshairs = function(){
         let crosshair_pos: Point = this.mouse_grid_position.ScaleC(this.GRID_SIZE);
     
@@ -211,8 +242,57 @@ class Editor{
                 }
             );
         }
+    }    
 
+
+
+    static CreateMenu = function(){
+        InputManager.AddKeyEvent(false, KeyBindings.ToggleMenu, function(){
+            Editor.ToggleMenu();
+            console.log(Editor.current_selected_item);
+        })
+        this.menu = document.getElementById("menu");
+        //create new ul for each menu type
+        for(let type of DATA.menu_types){
+            let new_link = document.createElement("div");
+            new_link.innerHTML = type.split("-").join(" ");
+
+            let new_ul = document.createElement("ul");
+            new_ul.id = type;
+
+            new_link.onclick = function(){
+                if(new_ul.classList.contains("open")){
+                    new_ul.classList.remove("open");
+                }
+                else{
+                    new_ul.classList.add("open");
+                }
+            }
+            this.menu.appendChild(new_link);
+            this.menu.appendChild(new_ul);
+        }
+    
+
+        for(let entity of DATA.entities){
+            let new_li = document.createElement("li");
+            new_li.innerHTML = entity.name.split("-").join(" ");
+            let value = entity.name;
+            new_li.onclick = function(){
+                Editor.current_selected_item = value; 
+            }
+            document.getElementById(entity.menu_type).appendChild(new_li);
+        }
     }
+    static ToggleMenu = function(){
+        if(this.menu.classList.contains("open")){
+            this.menu.classList.remove("open");
+        }
+        else{
+            this.menu.classList.add("open");
+        }
+    }
+
+
 
     static Resize = function(){
         this.canvas.width = window.innerWidth;
