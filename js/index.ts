@@ -123,11 +123,10 @@ class Editor{
         )
 
         //Handle Placement
-        if(this.current_selected_item && InputManager.IsMouseDown(1)){
+        if(this.current_selected_item && InputManager.IsMouseDown(0)){
             this.TryPlace();
         }
     
-
         this.DrawCrosshairs();
         this.DrawGrid();
     }
@@ -137,9 +136,11 @@ class Editor{
         if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){
             let id = (this.unused_ids.length > 0)?this.unused_ids.pop():this.entities.length;
 
+            let new_entity = new Entity(id, this.current_selected_item, this.mouse_grid_position);
+            new_entity.LoadFromData();
             
         }
-        //console.log(this.current_selected_item);
+        console.log(this.current_selected_item);
     }
 
 

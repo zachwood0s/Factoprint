@@ -15,5 +15,11 @@
   "bugs": {
     "url": "https://github.com/zachwood0s/Factoprint/issues"
   },
-  "homepage": "https://github.com/zachwood0s/Factoprint"
+  "homepage": "https://github.com/zachwood0s/Factoprint",
+  "dependencies": {
+    "browserify": "^14.4.0",
+    "pako": "^1.0.5",
+    "tsify": "^3.0.1",
+    "typescript": "^2.4.2"
+  }
 }

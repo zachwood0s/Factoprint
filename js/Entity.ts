@@ -12,7 +12,7 @@ class Entity{
         this.name = name;
         this.position = new Point(p.x, p.y);
     }
-    private LoadFromData(){
+    public LoadFromData(){
         let entity = DATA.entities.filter(function(value){
             return value.name == this.name;
         });

@@ -62,6 +62,7 @@ class InputManager{
     static HandleMouseDown(x: number, y:number, b: number){
         this.mouse_down_position = new Point(x, y);
         this.is_mouse_down[b] = true;
+        console.log(b);
     }
     static HandleMouseUp(x:number, y:number, b: number){
         this.mouse_up_position = new Point(x,y);
