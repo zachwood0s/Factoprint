@@ -86,6 +86,38 @@ li:hover span:after{
 }
 
 
+/**********************/
+/*      Tool bar      */
+/**********************/
+#toolbar{
+    height: 60px;
+    position:fixed;
+    right: 20px;
+    bottom:20px;
+    background:#21252b;
+    box-shadow:0px 0px 9px 1px #212121;
+}
+#toolbar div{
+    display:inline-block;
+    width:60px;
+    height:60px;
+    cursor:pointer;
+}
+#toolbar div:hover{
+    background:rgba(255,255,255,.1);
+}
+#toolbar div img{
+    width:40px;
+    height: 40px;
+    margin:10px;
+}
+
+
+
+/**********************/
+/*  Color for stuff   */
+/**********************/
+
 ul.accent1:before{
     background:#d0646d;
 }

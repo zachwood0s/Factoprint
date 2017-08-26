@@ -229,6 +229,12 @@ export class Editor{
                     if(!entity.position.Equals(this.current_selected_item.position)){
                         result.SameType = false;
                     }
+
+                    //Prevent placing over the exact same block
+                    if(entity.GetDirection() == this.current_selected_item.GetDirection() &&
+                       entity.properties.name == this.current_selected_item.properties.name){
+                        result.SameType = false;
+                    }
                 }
             }
         }
@@ -348,11 +354,51 @@ export class Editor{
                     color: COLOR_SCHEME.borders
                 }
             );
+        }
+        //Horizontal Lines
+        for(let y = 1; y<this.SQUARES_HIGH; y++){
+            let y_pos = y*this.GRID_SIZE;
+
+
+            DrawHelper.DrawLine(
+                this.ctx, 
+                new Point(0, y_pos),
+                new Point(this.GRID_SIZE*this.SQUARES_WIDE, y_pos),
+                {
+                    line_width: this.BORDER_WIDTH,
+                    color: COLOR_SCHEME.borders
+                }
+            );
+        }
+
         
-            //Draw Numbers
+        DrawHelper.DrawRect(
+            this.ctx,
+            new Point(DrawHelper.camera_position.x,DrawHelper.camera_position.y),
+            new Point(this.canvas.width, this.GRID_SIZE),
+            {
+                color:COLOR_SCHEME.background
+            }
+        )
+        DrawHelper.DrawRect(
+            this.ctx,
+            new Point(DrawHelper.camera_position.x,DrawHelper.camera_position.y),
+            new Point(this.GRID_SIZE, this.canvas.height),
+            {
+                color:COLOR_SCHEME.background
+            }
+        )
+        //Draw Numbers horizontal
+        for(let x = 1; x<this.SQUARES_WIDE; x++){
+            let x_pos = x*this.GRID_SIZE;
+    
+
             DrawHelper.DrawText(
                 this.ctx, 
-                new Point(x_pos+text_centering_factor, this.FONT_SIZE+text_centering_factor - 5),
+                new Point(
+                    x_pos+text_centering_factor, 
+                    this.FONT_SIZE+text_centering_factor - 5 + DrawHelper.camera_position.y
+                ),
                 ("0"+x).slice(-2),
                 {
                     color: COLOR_SCHEME.borders,
@@ -363,25 +409,16 @@ export class Editor{
         }
 
 
-        //Horizontal Lines
+        //Draw Numbers vertical
         for(let y = 1; y<this.SQUARES_HIGH; y++){
             let y_pos = y*this.GRID_SIZE;
 
-            //Draw Lines
-            DrawHelper.DrawLine(
-                this.ctx, 
-                new Point(0, y_pos),
-                new Point(this.GRID_SIZE*this.SQUARES_WIDE, y_pos),
-                {
-                    line_width: this.BORDER_WIDTH,
-                    color: COLOR_SCHEME.borders
-                }
-            );
-
-            //Draw Numbers
             DrawHelper.DrawText(
                 this.ctx, 
-                new Point(text_centering_factor, y_pos+this.FONT_SIZE+text_centering_factor - 5),
+                new Point(
+                    text_centering_factor + DrawHelper.camera_position.x, 
+                    y_pos+this.FONT_SIZE+text_centering_factor - 5
+                ),
                 ("0"+y).slice(-2),
                 {
                     color: COLOR_SCHEME.borders,
@@ -389,6 +426,37 @@ export class Editor{
                 }
             );
         }
+
+        //Little square in top left to hide overlapping numbers
+        DrawHelper.DrawRect(
+            this.ctx,
+            new Point(DrawHelper.camera_position.x,DrawHelper.camera_position.y),
+            new Point(this.GRID_SIZE, this.GRID_SIZE),
+            {
+                color:COLOR_SCHEME.background
+            }
+        )
+
+        //Bottom border below numbers
+        DrawHelper.DrawLine(
+            this.ctx,
+            new Point(DrawHelper.camera_position.x, DrawHelper.camera_position.y+this.GRID_SIZE),
+            new Point(DrawHelper.camera_position.x+this.canvas.width, DrawHelper.camera_position.y+this.GRID_SIZE),
+            {
+                color:COLOR_SCHEME.borders,
+                line_width: this.BORDER_WIDTH
+            }
+        )
+        //Right border to the right of numbers
+        DrawHelper.DrawLine(
+            this.ctx,
+            new Point(DrawHelper.camera_position.x+this.GRID_SIZE, DrawHelper.camera_position.y),
+            new Point(DrawHelper.camera_position.x+this.GRID_SIZE, DrawHelper.camera_position.y+this.canvas.height),
+            {
+                color:COLOR_SCHEME.borders,
+                line_width: this.BORDER_WIDTH
+            }
+        )
     }    
 
 
