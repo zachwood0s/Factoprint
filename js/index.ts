@@ -54,6 +54,10 @@ export class Editor{
         //Setup any styling
         this.canvas.style.backgroundColor=COLOR_SCHEME.background;
 
+        this.canvas.oncontextmenu = function (e) {
+            e.preventDefault();
+        };
+
         //test
         var test = "0eNqV0ckKwjAQBuB3+c8p2LRUzKuISJdBAu0kJFFaSt7dLh4EA9LjbB/DzIymf5J1mgPUDN0a9lDXGV4/uO7XXJgsQUEHGiDA9bBGNFpH3mfB1eytcSFrqA+IApo7GqHyeBMgDjpo2sUtmO78HBpyS8M/S8Aav4wbXrdYyKwQmKBOMYofTR7X8o8m0GlH7V6SCbs4bCfpMkGXh+kiRVfrsbcHqa9/CrzI+b2hLGVVnWUuLzG+ARDGqi4=";
         this.LoadBlueprint(test);
@@ -137,6 +141,9 @@ export class Editor{
         if(this.current_selected_item && InputManager.IsMouseDown(0)){
             this.TryPlace();
         }
+        if(InputManager.IsMouseDown(2)){
+            this.TryRemove();
+        }
     
         this.DrawCrosshairs();
         this.DrawGrid();
@@ -157,13 +164,40 @@ export class Editor{
     }
 
 
-    static TryPlace = function(){
-        if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){            
-            for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
-                for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
-                    this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y] = this.current_selected_item.id;
+
+    static TryRemove = function(){
+        console.log(this.entites);
+        if(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){
+            let id = this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y];
+            let entity = this.entities.filter((value)=>{
+                return value.id == id;
+            })[0];
+
+            let index = this.entities.indexOf(entity);
+            if(index > -1){
+                this.entities.splice(index, 1);
+            }
+
+            for(var i = 0; i<this.grid.length; i++){
+                for(var x = 0; x<this.grid[i].length; x++){
+                    if(this.grid[i][x] == id){
+                        this.grid[i][x] == undefined;
+                    }
                 }
             }
+            console.log(entity);
+        }
+    }
+    static TryPlace = function(){
+        //console.log("Trying place at "+ this.mouse_grid_position);
+        if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){            
+           // console.log("-Space is empty");
+            for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
+                for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
+                    this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y] = this.current_selected_item.id;
+                }
+            }
+            this.current_selected_item.position = this.mouse_grid_position;
             this.entities.push(this.current_selected_item);
             
             let entity_name = this.current_selected_item.properties.name;
@@ -171,10 +205,16 @@ export class Editor{
             this.current_selected_item = new Entity(this.GetNextID(), this.mouse_grid_position);
             this.current_selected_item.LoadFromData(entity_name);
             this.current_selected_item.SetDirection(direction);
-            console.log("placed");       
+           // console.log("placed");       
+        }
+        else{
+           // console.log("-Space is FULL");
         }
         //console.log(this.current_selected_item);
     }
+
+
+
 
 
     static DrawCrosshairs = function(){
@@ -280,6 +320,7 @@ export class Editor{
             );
         }
     }    
+
 
 
 
