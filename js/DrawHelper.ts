@@ -4,6 +4,9 @@ interface RenderOptions{
     line_width?: number;
     color?: string;
     font?: string;
+    flip_vertical?: boolean;
+    flip_horizontal?: boolean;
+    opacity?: number;
 }
 class DrawHelper{
     static camera_position: Point = new Point(0,0);
@@ -32,6 +35,18 @@ class DrawHelper{
         if(options.color) ctx.fillStyle = options.color;
         if(options.font) ctx.font = options.font;
         ctx.fillText(text, p.x, p.y);
+    }
+    static DrawImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, s:Point, sD:Point, d:Point, dD:Point, options:RenderOptions ){
+        ctx.save();
+        let x_scale = (options.flip_horizontal)?-1:1;
+        let y_scale = (options.flip_vertical)?-1:1;
+        
+        if(options.opacity) ctx.globalAlpha = options.opacity;
+
+       // console.log(x_scale);
+        ctx.scale(x_scale, y_scale);
+        ctx.drawImage(image, s.x, s.y, sD.x, sD.y, x_scale*d.x, y_scale*d.y, x_scale*dD.x, y_scale*dD.y);
+        ctx.restore();
     }
 
     static ClearScreen(ctx: CanvasRenderingContext2D){

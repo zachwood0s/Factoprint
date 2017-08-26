@@ -3,7 +3,7 @@ import {Point} from "./Utils"
 import {DrawHelper} from "./DrawHelper"
 import {InputManager} from "./InputManager"
 import {KeyBindings} from "./InputManager"
-import {DATA, Entity} from "./Entity"
+import {Data, Entity} from "./Entity"
 
 const COLOR_SCHEME = {
     background: "#282827",
@@ -17,13 +17,15 @@ enum LINE_SNAP{
     Horizontal,
 }
 
-class Editor{
-    private static GRID_SIZE = 40;
-    private static SQUARES_WIDE = 100;
-    private static SQUARES_HIGH = 100;
-    private static BORDER_WIDTH = 4;
-    private static FONT_SIZE = 25;
-    private static CAMERA_MOVE_SPEED = 10;
+export class Editor{
+    static readonly GRID_SIZE = 40;
+    static readonly ENTITY_SCALEUP = 10;
+    static readonly SQUARES_WIDE = 100;
+    static readonly SQUARES_HIGH = 100;
+    static readonly BORDER_WIDTH = 4;
+    static readonly FONT_SIZE = 25;
+    static readonly CAMERA_MOVE_SPEED = 10;
+    static readonly CURRENT_SELECTED_ITEM_OPACITY = .5;
 
     private static canvas: HTMLCanvasElement;
     private static ctx: CanvasRenderingContext2D;
@@ -33,12 +35,15 @@ class Editor{
     static last_mouse_grid_position: Point = new Point(0,0);
     static mouse_grid_position: Point = new Point(0,0);
 
-    static current_selected_item: string;
+    static current_selected_item: Entity;
 
     static line_snap_type: LINE_SNAP;
 
     static unused_ids: number[] = [];
     static entities: Entity[] = [];
+    static global_animators: Animator[] = [];
+
+ 
 
     static grid: number[][];
     
@@ -50,17 +55,23 @@ class Editor{
         this.canvas.style.backgroundColor=COLOR_SCHEME.background;
 
         //test
-        var test = "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";
-
+        var test = "0eNqV0ckKwjAQBuB3+c8p2LRUzKuISJdBAu0kJFFaSt7dLh4EA9LjbB/DzIymf5J1mgPUDN0a9lDXGV4/uO7XXJgsQUEHGiDA9bBGNFpH3mfB1eytcSFrqA+IApo7GqHyeBMgDjpo2sUtmO78HBpyS8M/S8Aav4wbXrdYyKwQmKBOMYofTR7X8o8m0GlH7V6SCbs4bCfpMkGXh+kiRVfrsbcHqa9/CrzI+b2hLGVVnWUuLzG+ARDGqi4=";
         this.LoadBlueprint(test);
 
-        InputManager.AddKeyEvent(false, KeyBindings.DropItem, function(){
-            Editor.current_selected_item = undefined;
+        InputManager.AddKeyEvent(false, KeyBindings.DropItem, ()=>{
+            this.current_selected_item = undefined;
+        });
+        InputManager.AddKeyEvent(false, KeyBindings.Rotate, ()=>{
+            if(this.current_selected_item){
+                this.current_selected_item.Rotate();
+            }
         });
 
         this.CreateMenu();
         this.CreateGrid();
         this.Resize();
+
+        Data.LoadImages();
     }
     static Update = function(){
      
@@ -129,18 +140,40 @@ class Editor{
     
         this.DrawCrosshairs();
         this.DrawGrid();
+
+        for(let key in this.global_animators){
+            let animator = this.global_animators[key];
+            animator.Update();
+        }
+
+        for(let entity of this.entities){
+            entity.Draw(this.ctx, 1);
+        }
+
+        if(this.current_selected_item){
+            this.current_selected_item.position = this.mouse_grid_position.Copy();
+            this.current_selected_item.Draw(this.ctx, this.CURRENT_SELECTED_ITEM_OPACITY);
+        }
     }
 
 
     static TryPlace = function(){
-        if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){
-            let id = (this.unused_ids.length > 0)?this.unused_ids.pop():this.entities.length;
-
-            let new_entity = new Entity(id, this.current_selected_item, this.mouse_grid_position);
-            new_entity.LoadFromData();
+        if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){            
+            for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
+                for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
+                    this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y] = this.current_selected_item.id;
+                }
+            }
+            this.entities.push(this.current_selected_item);
             
+            let entity_name = this.current_selected_item.properties.name;
+            let direction = this.current_selected_item.GetDirection();
+            this.current_selected_item = new Entity(this.GetNextID(), this.mouse_grid_position);
+            this.current_selected_item.LoadFromData(entity_name);
+            this.current_selected_item.SetDirection(direction);
+            console.log("placed");       
         }
-        console.log(this.current_selected_item);
+        //console.log(this.current_selected_item);
     }
 
 
@@ -178,6 +211,9 @@ class Editor{
                 color:COLOR_SCHEME.crosshair
             }
         );
+    }
+    static GetNextID = function(): number{
+        return (Editor.unused_ids.length > 0)?Editor.unused_ids.pop():Editor.entities.length;   
     }
     static CreateGrid = function(){
         this.grid = [];
@@ -254,7 +290,7 @@ class Editor{
         })
         this.menu = document.getElementById("menu");
         //create new ul for each menu type
-        for(let type of DATA.menu_types){
+        for(let type of Data.menu_types){
             let new_link = document.createElement("div");
             new_link.innerHTML = type.split("-").join(" ");
 
@@ -274,12 +310,16 @@ class Editor{
         }
     
 
-        for(let entity of DATA.entities){
+        for(let entity of Data.entities){
             let new_li = document.createElement("li");
             new_li.innerHTML = entity.name.split("-").join(" ");
             let value = entity.name;
             new_li.onclick = function(){
-                Editor.current_selected_item = value; 
+                let id = Editor.GetNextID();
+                let new_entity = new Entity(id, Editor.mouse_grid_position);
+                new_entity.LoadFromData(value);
+
+                Editor.current_selected_item = new_entity; 
             }
             document.getElementById(entity.menu_type).appendChild(new_li);
         }
@@ -342,6 +382,35 @@ class Editor{
         for(let entity of blueprint.entities){
             console.log(entity);
         }
+    }
+}
+
+export class Animator{
+    private current_frame: number;
+    private frame_count: number;
+    private current_tick: number;
+    private ticks_per_frame:number;
+
+    constructor(frame_count:number, ticks_per_frame:number){
+        this.current_frame = 0;
+        this.frame_count = frame_count;
+        this.current_tick = 0;
+        this.ticks_per_frame = ticks_per_frame;
+    }
+    public Update(){
+        if(this.current_tick < this.ticks_per_frame){
+            this.current_tick++;
+        }
+        else{
+            this.current_tick = 0;
+            this.current_frame++;
+            if(this.current_frame >= this.frame_count){
+                this.current_frame = 0;
+            }
+        }
+    }
+    public CurrentFrame(): number{
+        return this.current_frame;
     }
 }
 
