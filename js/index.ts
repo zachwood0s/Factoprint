@@ -201,12 +201,42 @@ export class Editor{
         }
 
     }
+    static IsClear = function(){
+        let result = {
+            SameType: true,
+            Empty: true,
+        }
+        for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
+            for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
+                if(this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y] != undefined){
+                    result.Empty = false;
+
+                    let id = this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y];
+                    let entity: Entity = this.entities.filter((value)=>{
+                        if(value){
+                            return value.id == id;
+                        }
+                    })[0];
+
+                    console.log(entity.properties.type);
+                    if(entity.properties.type != this.current_selected_item.properties.type){
+                        result.SameType = false;
+                    }
+                   // console.log(entity.position)
+                    if(!entity.position.Equals(this.current_selected_item.position)){
+                        result.SameType = false;
+                    }
+                }
+            }
+        }
+        return result;
+    }
     static TryPlace = function(){
        // console.log("Trying place at "+ this.mouse_grid_position.x);
        // console.log(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]);
-        
-        if(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y] === undefined){            
-          //  console.log("-Space is empty");
+        let is_clear = this.IsClear();
+        if(is_clear.Empty){            
+            console.log("-Space is empty");
 
             for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
                 for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
@@ -228,8 +258,13 @@ export class Editor{
            // console.log("placed");   
            // console.log(this.grid);
         }
+        else if(is_clear.SameType){
+            console.log("same type");
+            this.TryRemove();
+            this.TryPlace();
+        }
         else{
-           // console.log("-Space is FULL");
+            console.log("-Space is FULL");
         }
         //console.log(this.current_selected_item);
     }
@@ -469,7 +504,12 @@ export class Animator{
         }
         else{
             this.current_tick = 0;
-            this.current_frame++;
+            if(this.ticks_per_frame < 0){
+                this.current_frame+=Math.abs(this.ticks_per_frame);
+            }
+            else{
+                this.current_frame++;
+            }
             if(this.current_frame >= this.frame_count){
                 this.current_frame = 0;
             }

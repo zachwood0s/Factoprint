@@ -43,6 +43,10 @@ class Point{
     }
     public ScaleC(s: number): Point{
         return new Point(this.x * s, this.y * s);
+    
+    }
+    public Equals(p: Point): boolean{
+        return this.x == p.x && this.y == p.y;
     }
 }
 

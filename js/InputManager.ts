@@ -6,7 +6,7 @@ const enum KeyBindings{
     MoveUp = 87,
     MoveDown = 83,
     LineSnap = 16,
-    ToggleMenu = 17,
+    ToggleMenu = 69,
     DropItem = 81,
     Rotate = 82,
 }
