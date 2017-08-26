@@ -70,11 +70,12 @@ export class Editor{
                 this.current_selected_item.Rotate();
             }
         });
-
+        
         this.CreateMenu();
         this.CreateGrid();
         this.Resize();
-
+    
+    
         Data.LoadImages();
     }
     static Update = function(){
@@ -94,7 +95,7 @@ export class Editor{
         else{
             this.line_snap_type = LINE_SNAP.None;
         }
-
+        
         this.last_mouse_grid_position = this.mouse_grid_position.Copy();
         this.mouse_grid_position = this.ScreenToGridCoords(InputManager.mouse_position);
         this.mouse_grid_position.Clamp(
@@ -144,6 +145,11 @@ export class Editor{
         if(InputManager.IsMouseDown(2)){
             this.TryRemove();
         }
+        if(InputManager.IsMouseDown(1)){
+            console.log(this.grid);
+            console.log(this.entities);
+            console.log(this.unused_ids);
+        }
     
         this.DrawCrosshairs();
         this.DrawGrid();
@@ -154,7 +160,9 @@ export class Editor{
         }
 
         for(let entity of this.entities){
-            entity.Draw(this.ctx, 1);
+            if(entity){
+                entity.Draw(this.ctx, 1);
+            }
         }
 
         if(this.current_selected_item){
@@ -166,51 +174,71 @@ export class Editor{
 
 
     static TryRemove = function(){
-        console.log(this.entites);
-        if(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){
+        if(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y] !== undefined){
             let id = this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y];
+            
             let entity = this.entities.filter((value)=>{
-                return value.id == id;
+                if(value){
+                    return value.id == id;
+                }
             })[0];
 
             let index = this.entities.indexOf(entity);
             if(index > -1){
-                this.entities.splice(index, 1);
+                this.entities[index] = undefined;
+                console.log("Removed entity: "+entity.id);
             }
 
             for(var i = 0; i<this.grid.length; i++){
                 for(var x = 0; x<this.grid[i].length; x++){
                     if(this.grid[i][x] == id){
-                        this.grid[i][x] == undefined;
+                        this.grid[i][x] = undefined;
                     }
                 }
             }
+            this.unused_ids.push(id);
             console.log(entity);
         }
+
     }
     static TryPlace = function(){
-        //console.log("Trying place at "+ this.mouse_grid_position);
-        if(!this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]){            
-           // console.log("-Space is empty");
+       // console.log("Trying place at "+ this.mouse_grid_position.x);
+       // console.log(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]);
+        
+        if(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y] === undefined){            
+          //  console.log("-Space is empty");
+
             for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
                 for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
+               //     console.log("Placing element with id: "+this.current_selected_item.id);
+                    
                     this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y] = this.current_selected_item.id;
+                    
+                 //   console.log("Grid at spot now looks like "+this.grid)
                 }
             }
             this.current_selected_item.position = this.mouse_grid_position;
-            this.entities.push(this.current_selected_item);
+            this.entities[this.current_selected_item.id] = this.current_selected_item;
             
             let entity_name = this.current_selected_item.properties.name;
             let direction = this.current_selected_item.GetDirection();
-            this.current_selected_item = new Entity(this.GetNextID(), this.mouse_grid_position);
+            this.current_selected_item = new Entity(this.GetNextID(), this.mouse_grid_position.Copy());
             this.current_selected_item.LoadFromData(entity_name);
             this.current_selected_item.SetDirection(direction);
-           // console.log("placed");       
+           // console.log("placed");   
+           // console.log(this.grid);
         }
         else{
            // console.log("-Space is FULL");
         }
         //console.log(this.current_selected_item);
+    }
+    static SelectItem = function(value: string){
+        let id = this.GetNextID();
+        let new_entity = new Entity(id, this.mouse_grid_position);
+        new_entity.LoadFromData(value);
+
+        this.current_selected_item = new_entity; 
     }
 
 
@@ -253,7 +281,9 @@ export class Editor{
         );
     }
     static GetNextID = function(): number{
-        return (Editor.unused_ids.length > 0)?Editor.unused_ids.pop():Editor.entities.length;   
+        let id = (this.unused_ids.length > 0)?this.unused_ids.pop():this.entities.length;   
+        console.log("Assigning ID: "+id);
+        return id; 
     }
     static CreateGrid = function(){
         this.grid = [];
@@ -327,7 +357,6 @@ export class Editor{
     static CreateMenu = function(){
         InputManager.AddKeyEvent(false, KeyBindings.ToggleMenu, function(){
             Editor.ToggleMenu();
-            console.log(Editor.current_selected_item);
         })
         this.menu = document.getElementById("menu");
         //create new ul for each menu type
@@ -355,12 +384,8 @@ export class Editor{
             let new_li = document.createElement("li");
             new_li.innerHTML = entity.name.split("-").join(" ");
             let value = entity.name;
-            new_li.onclick = function(){
-                let id = Editor.GetNextID();
-                let new_entity = new Entity(id, Editor.mouse_grid_position);
-                new_entity.LoadFromData(value);
-
-                Editor.current_selected_item = new_entity; 
+            new_li.onclick = ()=>{
+                Editor.SelectItem(value);
             }
             document.getElementById(entity.menu_type).appendChild(new_li);
         }
