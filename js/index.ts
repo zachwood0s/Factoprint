@@ -6,8 +6,8 @@ import {KeyBindings} from "./InputManager"
 import {Data, Entity} from "./Entity"
 
 const COLOR_SCHEME = {
-    background: "#282827",
-    borders: "#3b3b3b",
+    background: "#282c34",
+    borders: "#4f5052",
     crosshair: "#e0e0e0",
 };
 
@@ -57,6 +57,9 @@ export class Editor{
         this.canvas.oncontextmenu = function (e) {
             e.preventDefault();
         };
+        this.canvas.onclick = function(){
+            Editor.CloseMenu();
+        }
 
         //test
         var test = "0eNqV0ckKwjAQBuB3+c8p2LRUzKuISJdBAu0kJFFaSt7dLh4EA9LjbB/DzIymf5J1mgPUDN0a9lDXGV4/uO7XXJgsQUEHGiDA9bBGNFpH3mfB1eytcSFrqA+IApo7GqHyeBMgDjpo2sUtmO78HBpyS8M/S8Aav4wbXrdYyKwQmKBOMYofTR7X8o8m0GlH7V6SCbs4bCfpMkGXh+kiRVfrsbcHqa9/CrzI+b2hLGVVnWUuLzG+ARDGqi4=";
@@ -232,6 +235,8 @@ export class Editor{
         return result;
     }
     static TryPlace = function(){
+
+        if(this.menu.classList.contains("open")) return;
        // console.log("Trying place at "+ this.mouse_grid_position.x);
        // console.log(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]);
         let is_clear = this.IsClear();
@@ -390,6 +395,8 @@ export class Editor{
 
 
     static CreateMenu = function(){
+        let accent_counter = 1;//Fancy tree colors
+
         InputManager.AddKeyEvent(false, KeyBindings.ToggleMenu, function(){
             Editor.ToggleMenu();
         })
@@ -401,6 +408,10 @@ export class Editor{
 
             let new_ul = document.createElement("ul");
             new_ul.id = type;
+
+            //Fancy tree colors
+            new_ul.classList.add("accent"+accent_counter);
+            accent_counter++;
 
             new_link.onclick = function(){
                 if(new_ul.classList.contains("open")){
@@ -417,7 +428,7 @@ export class Editor{
 
         for(let entity of Data.entities){
             let new_li = document.createElement("li");
-            new_li.innerHTML = entity.name.split("-").join(" ");
+            new_li.innerHTML = "<span>"+entity.name+"</span>";
             let value = entity.name;
             new_li.onclick = ()=>{
                 Editor.SelectItem(value);
@@ -427,11 +438,14 @@ export class Editor{
     }
     static ToggleMenu = function(){
         if(this.menu.classList.contains("open")){
-            this.menu.classList.remove("open");
+            this.CloseMenu();   
         }
         else{
             this.menu.classList.add("open");
         }
+    }
+    static CloseMenu = function(){
+        this.menu.classList.remove("open");
     }
 
 

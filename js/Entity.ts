@@ -176,6 +176,9 @@ class Data{
 Data.menu_types = [
     "transport-belts",
     "assembling-machines",
+    "assembling-machines3",
+    "assembling-machines4",
+    "assembling-machines5",
 ];
 Data.entities = [
     {
@@ -316,6 +319,29 @@ Data.entities = [
         }, 
         tags:["rotatable"]  
     },
+
+    {
+        name: "assembling-machine-1",
+        type: "assembling-machine",
+        menu_type: Data.menu_types[2],
+        grid_size:new Point(3,3),
+        tags:["rotatable"]  
+    },
+    {
+        name: "assembling-machine-1",
+        type: "assembling-machine",
+        menu_type: Data.menu_types[3],
+        grid_size:new Point(3,3),
+        tags:["rotatable"]  
+    },
+    {
+        name: "assembling-machine-1",
+        type: "assembling-machine",
+        menu_type: Data.menu_types[4],
+        grid_size:new Point(3,3),
+        tags:["rotatable"]  
+    },
+
 ]
 /*let DATA = {
     menu_types:[

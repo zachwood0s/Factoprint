@@ -4,17 +4,149 @@ body{
     font-family: "Share Tech Mono";
 }
 #menu{
-    width:200px;
+    width:275px;
     height: 100%;
-    left: -200px;
+    left: -275px;
     top:0;
     position: fixed;
-    background:#424242;
+    background:#21252b;
     padding:20px;
-    text-transform: capitalize;
     box-sizing:border-box;
     transition:left .3s;
+    color:white;
 }
 #menu.open{
     left:0;
+}
+#menu div{
+    text-transform: capitalize;
+    cursor:pointer;
+}
+ul{
+    list-style: none;
+    font-size:15px;
+    display:block;
+    min-height:20px;
+    position: relative;
+}
+
+ul:before{
+    content:"";
+    display: block;
+    position: absolute;
+    width:4px;
+    height: 100%;
+    left: 17px;
+    top:-7;
+}
+
+li:before{
+    content:"";
+    display:block;
+    position: relative;
+    width:10px;
+    height:4px;
+    top:10px;
+    left: -20px;
+}
+li{
+    cursor: pointer;
+}
+li span{
+    position: relative;
+}
+li span:after,
+li span:before{
+    font-family:sans-serif;
+    font-weight: 900;
+    position: absolute;
+    display: block;
+    color:white;
+    top:-6px;
+    font-size: 17px;
+    opacity:0;
+    transition:all .3s;
+}
+li span:before{
+    content: "[";
+    left:0px;
+}
+li span:after{
+    content: "]";
+    right:0px;
+}
+
+li:hover span:before{
+    left:-12px;
+    opacity:1;
+}
+li:hover span:after{
+    right:-12px;
+    opacity:1;
+}
+
+
+ul.accent1:before{
+    background:#d0646d;
+}
+ul.accent1 li:before{
+    background:#d0646d;
+}
+ul.accent1 li span:before{
+    color:#d0646d
+}
+ul.accent1 li span:after{
+    color:#d0646d
+}
+
+ul.accent2:before{
+    background:#c373db;
+}
+ul.accent2 li:before{
+    background:#c373db;
+}
+ul.accent2 li span:before{
+    color:#c373db
+}
+ul.accent2 li span:after{
+    color:#c373db
+}
+
+ul.accent3:before{
+    background:#97c475;
+}
+ul.accent3 li:before{
+    background:#97c475;
+}
+ul.accent3 li span:before{
+    color:#97c475
+}
+ul.accent3 li span:after{
+    color:#97c475
+}
+
+ul.accent4:before{
+    background:#59a2e2;
+}
+ul.accent4 li:before{
+    background:#59a2e2;
+}
+ul.accent4 li span:before{
+    color:#59a2e2
+}
+ul.accent4 li span:after{
+    color:#59a2e2
+}
+
+ul.accent5:before{
+    background:#cb9560;
+}
+ul.accent5 li:before{
+    background:#cb9560;
+}
+ul.accent5 li span:before{
+    color:#cb9560
+}
+ul.accent5 li span:after{
+    color:#cb9560
 }
