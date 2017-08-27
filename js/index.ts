@@ -31,6 +31,10 @@ export class Editor{
     private static ctx: CanvasRenderingContext2D;
 
     private static menu: HTMLDivElement;
+    private static menu_button: HTMLDivElement;
+    private static import_button: HTMLDivElement;
+    private static export_button: HTMLDivElement;
+
 
     static last_mouse_grid_position: Point = new Point(0,0);
     static mouse_grid_position: Point = new Point(0,0);
@@ -43,14 +47,17 @@ export class Editor{
     static entities: Entity[] = [];
     static global_animators: Animator[] = [];
 
- 
-
+    
     static grid: number[][];
     
     static Init = function(){      
         this.canvas = document.getElementById("editorCanvas");
         this.ctx = this.canvas.getContext("2d");
 
+        this.menu_button = document.getElementById("menuButton");
+        this.menu_button.onclick = function(){
+            Editor.ToggleMenu();
+        }
         //Setup any styling
         this.canvas.style.backgroundColor=COLOR_SCHEME.background;
 
@@ -77,8 +84,7 @@ export class Editor{
         this.CreateMenu();
         this.CreateGrid();
         this.Resize();
-    
-    
+
         Data.LoadImages();
     }
     static Update = function(){
@@ -172,6 +178,7 @@ export class Editor{
             this.current_selected_item.position = this.mouse_grid_position.Copy();
             this.current_selected_item.Draw(this.ctx, this.CURRENT_SELECTED_ITEM_OPACITY);
         }
+        this.DrawRulers();
     }
 
 
@@ -338,8 +345,6 @@ export class Editor{
         }
     }
     static DrawGrid = function(){
-        let text_centering_factor = (this.GRID_SIZE - this.FONT_SIZE)/2;
-
         //Vertical Lines
         for(let x = 1; x<this.SQUARES_WIDE; x++){
             let x_pos = x*this.GRID_SIZE;
@@ -370,7 +375,9 @@ export class Editor{
                 }
             );
         }
-
+    }   
+    static DrawRulers(){
+        let text_centering_factor = (this.GRID_SIZE - this.FONT_SIZE)/2;
         
         DrawHelper.DrawRect(
             this.ctx,
@@ -404,8 +411,17 @@ export class Editor{
                     color: COLOR_SCHEME.borders,
                     font: "700 "+this.FONT_SIZE+"px Share Tech Mono"
                 }
-
             );
+            DrawHelper.DrawLine(
+                this.ctx,
+                new Point(x_pos+this.GRID_SIZE, DrawHelper.camera_position.y),
+                new Point(x_pos+this.GRID_SIZE, DrawHelper.camera_position.y + this.GRID_SIZE),
+                {
+                    color: COLOR_SCHEME.borders,
+                    line_width: this.BORDER_WIDTH
+                }
+            )
+            
         }
 
 
@@ -425,6 +441,15 @@ export class Editor{
                     font: "700 "+this.FONT_SIZE+"px Share Tech Mono"
                 }
             );
+            DrawHelper.DrawLine(
+                this.ctx,
+                new Point(DrawHelper.camera_position.x, y_pos+this.GRID_SIZE),
+                new Point(DrawHelper.camera_position.x + this.GRID_SIZE, y_pos+this.GRID_SIZE),
+                {
+                    color: COLOR_SCHEME.borders,
+                    line_width: this.BORDER_WIDTH
+                }
+            )
         }
 
         //Little square in top left to hide overlapping numbers
@@ -457,7 +482,7 @@ export class Editor{
                 line_width: this.BORDER_WIDTH
             }
         )
-    }    
+    } 
 
 
 

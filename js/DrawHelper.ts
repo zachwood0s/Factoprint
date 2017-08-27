@@ -37,6 +37,8 @@ class DrawHelper{
         ctx.fillText(text, p.x, p.y);
     }
     static DrawImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, s:Point, sD:Point, d:Point, dD:Point, options:RenderOptions ){
+        d.Subtract(this.camera_position);
+        
         ctx.save();
         let x_scale = (options.flip_horizontal)?-1:1;
         let y_scale = (options.flip_vertical)?-1:1;
