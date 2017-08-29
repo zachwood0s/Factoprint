@@ -7,21 +7,30 @@ interface Properties{
     type: string,
     menu_type: string,
     grid_size: Point,
-    animation?:{
+    animation?:AnimationProperties;
+    pictures?:{
         file_name: string,
         width: number,
         height: number,
-        frame_count: number,
-        ticks_per_frame: number,
-        line_length?: number,
-        shift?:{
-            y: number,
-            x: number
-        }
-    };
+        direction_count: number,
+        direction: number
+    }
     transport_belt?: TransportBeltProperties;
+    splitter?:SplitterProperties;
     control_behavior?: any;
     tags: string[];
+}
+interface AnimationProperties{
+    file_name: string,
+    width: number,
+    height: number,
+    frame_count: number,
+    ticks_per_frame: number,
+    line_length?: number,
+    shift?:{
+        y: number,
+        x: number
+    }
 }
 interface TransportBeltProperties{
     direction: number,
@@ -34,6 +43,16 @@ interface TransportBeltProperties{
         top_to_side:{y:number},
         side_to_bottom:{y:number},
         bottom_to_side:{y:number}
+    }
+}
+interface SplitterProperties{
+    direction: number,
+    direction_count: number,
+    animation:{
+        east:AnimationProperties,
+        west: AnimationProperties,
+        north: AnimationProperties,
+        south: AnimationProperties,
     }
 }
 
@@ -57,12 +76,14 @@ class Entity{
         //turns out that our deep copy doesn't keep the methods for Point soo... I'm gonna do that here
         this.properties.grid_size = data_entity.grid_size.Copy();
         
-        if(!Editor.global_animators[this.properties.name]){
-            Editor.global_animators[this.properties.name] = 
-                new Animator(
-                    this.properties.animation.frame_count,
-                    this.properties.animation.ticks_per_frame
-                );
+        if(this.properties.animation){
+            if(!Editor.global_animators[this.properties.name]){
+                Editor.global_animators[this.properties.name] = 
+                    new Animator(
+                        this.properties.animation.frame_count,
+                        this.properties.animation.ticks_per_frame
+                    );
+            }
         }
     }
 
@@ -88,7 +109,11 @@ class Entity{
                 .AddC(
                     {x: Editor.ENTITY_SCALEUP, y: Editor.ENTITY_SCALEUP}
                 );
-            
+            let d = this.position
+                .ScaleC(Editor.GRID_SIZE)
+                .SubtractC(
+                    {x:Editor.ENTITY_SCALEUP/2, y:Editor.ENTITY_SCALEUP/2}
+                );
             if(this.properties.type == "assembling-machine"){
                 let current_row = Math.floor(Editor.global_animators[this.properties.name].CurrentFrame()/this.properties.animation.line_length);
                 let current_column = Editor.global_animators[this.properties.name].CurrentFrame()-(current_row * this.properties.animation.line_length)
@@ -119,18 +144,14 @@ class Entity{
                 image, 
                 s, 
                 sD, 
-                this.position
-                    .ScaleC(Editor.GRID_SIZE)
-                    .SubtractC(
-                        {x:Editor.ENTITY_SCALEUP/2, y:Editor.ENTITY_SCALEUP/2}
-                    ), 
-                    dD, 
-                    {
-                        opacity: o,
-                        flip_horizontal: flip_h,
-                        flip_vertical: flip_v
-                    }
-                ); 
+                d,
+                dD, 
+                {
+                    opacity: o,
+                    flip_horizontal: flip_h,
+                    flip_vertical: flip_v
+                }
+            ); 
         }
     }
     public SetDirection(d: number){
@@ -153,6 +174,12 @@ class Entity{
                 this.properties.transport_belt.direction = 0;
             }
         }
+        else if(this.properties.type == "electric-pole"){
+            this.properties.pictures.direction++;
+            if(this.properties.pictures.direction >= this.properties.pictures.direction_count){
+                this.properties.pictures.direction = 0;
+            }
+        }
     }
 }
 
@@ -170,17 +197,22 @@ class Data{
                     this.loaded_images[entity.name] = new_image;
                 }
             }
+            if(entity.splitter){
+
+            }
         }
     }
 }
 Data.menu_types = [
     "transport-belts",
     "assembling-machines",
-    "assembling-machines3",
-    "assembling-machines4",
-    "assembling-machines5",
+    "electricity"
 ];
 Data.entities = [
+
+    /**********************/
+    /*   Tranport Belts   */
+    /**********************/
     {
         name: "transport-belt",
         type: "transport-belt",
@@ -298,7 +330,36 @@ Data.entities = [
         },     
         tags:["rotatable"]  
     },
+    {
+        name: "splitter",
+        type: "splitter",
+        menu_type: Data.menu_types[0],
+        grid_size:new Point(1,1),
+        animation:{
+            file_name: "",
+            width:40,
+            height:40,
+            ticks_per_frame: -3, //Negative means it goes 2 frames every tick
+            frame_count:32,
+        },
+        splitter: {
+            direction: 0,
+            direction_count: 6,
+            animation:{
+                west:{
+                    file_name: "images\\entity\\splitter\\splitter-west.png"
+                    
+                }
+            }
+        },     
+        tags:["rotatable"]  
+    },
 
+
+
+    /***************************/
+    /*   Assembling Machines   */
+    /***************************/
 
     {
         name: "assembling-machine-1",
@@ -317,29 +378,64 @@ Data.entities = [
                 x: 0
             }
         }, 
-        tags:["rotatable"]  
+        tags:[]
+    },
+    {
+        name: "assembling-machine-2",
+        type: "assembling-machine",
+        menu_type: Data.menu_types[1],
+        grid_size:new Point(3,3),
+        animation:{
+            file_name: "images\\entity\\assembling-machine-2\\assembling-machine-2.png",
+            width:108,
+            height:110,
+            ticks_per_frame: 1, //Negative means it goes 2 frames every tick
+            frame_count:32,
+            line_length: 8,
+            shift:{
+                y: 0,
+                x: 0
+            }
+        }, 
+        tags:[]
+    },
+    {
+        name: "assembling-machine-3",
+        type: "assembling-machine",
+        menu_type: Data.menu_types[1],
+        grid_size:new Point(3,3),
+        animation:{
+            file_name: "images\\entity\\assembling-machine-3\\assembling-machine-3.png",
+            width:108,
+            height:119,
+            ticks_per_frame: 1, //Negative means it goes 2 frames every tick
+            frame_count:32,
+            line_length: 8,
+            shift:{
+                y: 0,
+                x: 0
+            }
+        }, 
+        tags:[]
     },
 
+
+    /*******************/
+    /*   Electricity   */
+    /*******************/
     {
-        name: "assembling-machine-1",
-        type: "assembling-machine",
+        name: "big-electric-pole",
+        type: "electric-pole",
         menu_type: Data.menu_types[2],
-        grid_size:new Point(3,3),
-        tags:["rotatable"]  
-    },
-    {
-        name: "assembling-machine-1",
-        type: "assembling-machine",
-        menu_type: Data.menu_types[3],
-        grid_size:new Point(3,3),
-        tags:["rotatable"]  
-    },
-    {
-        name: "assembling-machine-1",
-        type: "assembling-machine",
-        menu_type: Data.menu_types[4],
-        grid_size:new Point(3,3),
-        tags:["rotatable"]  
+        grid_size:new Point(2,2),
+        pictures:{
+            file_name: "images\\entity\\big-electric-pole\\big-electric-pole.png",
+            width: 168,
+            height: 165,
+            direction_count: 4,
+            direction: 1
+        }, 
+        tags:[]
     },
 
 ]
