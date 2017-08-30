@@ -238,10 +238,10 @@ export class Editor{
                     }
 
                     //Prevent placing over the exact same block
-                    if(entity.GetDirection() == this.current_selected_item.GetDirection() &&
+                    /*if(entity.GetDirection() == this.current_selected_item.GetDirection() &&
                        entity.properties.name == this.current_selected_item.properties.name){
                         result.SameType = false;
-                    }
+                    }*/
                 }
             }
         }
