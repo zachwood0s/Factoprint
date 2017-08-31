@@ -1,7 +1,7 @@
 import {Point} from "./Utils"
 import {Editor, Animator} from "./index"
 import {DrawHelper} from "./DrawHelper"
-
+import {Data} from './Data';
 /*
 interface Properties{
     name: string,
@@ -57,7 +57,7 @@ interface SplitterProperties{
     }
 }*/
 
-interface Properties{
+export interface Properties{
     name: string,
     type: string,
     menu_type: string,
@@ -81,7 +81,7 @@ interface Properties{
     }
     tags:string[];
 }
-interface AnimationProperties{
+export interface AnimationProperties{
     file_name: string,
     
     width: number,
@@ -97,6 +97,8 @@ interface AnimationProperties{
         x: number,
         y: number
     }
+    //The deminsions that it will be drawn on the grid as
+    //In grid units
     destination_dimensions?:{
         width: number,
         height: number
@@ -147,13 +149,13 @@ class Entity{
                 }
             }
         }
-        console.log(Editor.global_animators)
+        //console.log(Editor.global_animators)
     }
 
     private DrawAnimation(ctx: CanvasRenderingContext2D, opacity: number, anim: AnimationProperties, anim_key: string){
         let image = Data.loaded_images[anim.file_name];
 
-        console.log("Current anim: "+anim_key);
+       // console.log("Current anim: "+anim_key);
         //Source image location on sprite-map
         let s = new Point(
             anim.width * Editor.global_animators[this.properties.name+"-"+anim_key].CurrentFrame(),
@@ -189,6 +191,30 @@ class Entity{
             mirrorX = anim.mirror.x;
             mirrorY = anim.mirror.y;
         }
+        let current_row = 0;
+        let current_column = 0;
+        if(anim.line_length){
+            current_row = Math.floor(Editor.global_animators[this.properties.name+"-"+anim_key].CurrentFrame()/anim.line_length);
+            current_column = Editor.global_animators[this.properties.name+"-"+anim_key].CurrentFrame()-(current_row * anim.line_length)
+            s.y = current_row * anim.height;
+            s.x = current_column * anim.width;
+        }
+        if(anim.sprite_shift){
+            s.y += (current_row+1) * anim.sprite_shift.y;
+            s.x += (current_column+1) * anim.sprite_shift.x;
+        }
+        if(anim.destination_shift){
+            d.x += anim.destination_shift.x;
+            d.y += anim.destination_shift.y;
+        }
+        if(anim.destination_dimensions){
+            dD.x = anim.destination_dimensions.width * Editor.GRID_SIZE;
+            dD.y = anim.destination_dimensions.height * Editor.GRID_SIZE;
+            dD.Add(
+                {x: Editor.ENTITY_SCALEUP, y: Editor.ENTITY_SCALEUP}
+            );
+           // console.log(dD);
+        }
 
         DrawHelper.DrawImage(
             ctx,
@@ -222,6 +248,25 @@ class Entity{
             if(this.properties.directions.current_direction >= this.properties.directions.direction_count){
                 this.properties.directions.current_direction = 0;
             }
+
+            //Gotta flip the grid size for oblong shapes
+            if(this.properties.grid_size.x != this.properties.grid_size.y){
+                let temp_x = this.properties.grid_size.x;
+                this.properties.grid_size.x = this.properties.grid_size.y;
+                this.properties.grid_size.y = temp_x;
+                console.log("current grid size",this.properties.grid_size);
+            }
+        }
+    }
+    public GetDirection(): number{
+        if(this.properties.directions){
+            return this.properties.directions.current_direction;
+        }
+        return 0;
+    }
+    public SetDirection(dir: number){
+        if(this.properties.directions){
+            this.properties.directions.current_direction = dir; 
         }
     }
         /*if(this.properties.animation){
@@ -319,118 +364,6 @@ class Entity{
     
 }
 
-
-class Data{
-    static loaded_images: HTMLImageElement[] = [];
-    static menu_types:string[];
-    static entities: Properties[];
-
-    static LoadImages(){
-        for(let entity of this.entities){
-            if(entity.animations){
-                //console.log(entity.animations);
-                for(let anim_key in entity.animations){
-                    let anim = entity.animations[anim_key];
-                    if(!this.loaded_images[anim.file_name]){
-                        let new_image = new Image();
-                        new_image.src = anim.file_name;
-                        this.loaded_images[anim.file_name] = new_image;
-                    }
-                   // console.log(anim);
-                }
-            }
-            
-        }
-    }
-}
-Data.menu_types = [
-    "transport-belts",
-];
-
-Data.entities = [
-
-    {
-        name: "transport-belt",
-        type: "transport-belt",
-        menu_type: "transport-belts",
-        grid_size:{
-            x: 1,
-            y: 1
-        },
-        animations:{
-            default:{   //Right
-                file_name: "images\\entity\\transport-belt\\transport-belt.png",
-                
-                width: 40,
-                height: 40,
-                
-                ticks_per_frame: 0, //Negative means it goes that many frames every tick
-                frame_count: 16,
-            },
-            down:{
-                file_name: "images\\entity\\transport-belt\\transport-belt.png",
-                width: 40,
-                height: 40,
-
-                ticks_per_frame: 0,
-                frame_count: 16,
-                
-                mirror:{
-                    y:true,
-                    x:false,
-                },
-                source_shift:{
-                    x:0,
-                    y:40
-                }
-            },
-            left:{
-                file_name: "images\\entity\\transport-belt\\transport-belt.png",
-                width: 40,
-                height: 40,
-
-                ticks_per_frame: 0,
-                frame_count: 16,
-                
-                mirror:{
-                    y:false,
-                    x:true,
-                },
-            },
-            up:{
-                file_name: "images\\entity\\transport-belt\\transport-belt.png",
-                width: 40,
-                height: 40,
-
-                ticks_per_frame: 0,
-                frame_count: 16,
-                
-                source_shift:{
-                    x:0,
-                    y:40,
-                }
-            }
-
-        },
-        directions:{
-            current_direction: 0,
-            direction_count: 4,
-            0:{
-                animation: "default"
-            },
-            1:{
-                animation: "down"
-            },
-            2:{
-                animation: "left"
-            },
-            3:{
-                animation: "up"
-            },
-        },
-        tags:["rotatable"],
-    }
-]
 
     /**********************/
     /*   Tranport Belts   */

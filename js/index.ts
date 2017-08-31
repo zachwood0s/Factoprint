@@ -237,11 +237,15 @@ export class Editor{
                         result.SameType = false;
                     }
 
+                    if(entity.properties.grid_size.x != entity.properties.grid_size.y){
+                        result.SameType = false;
+                    }
                     //Prevent placing over the exact same block
-                    /*if(entity.GetDirection() == this.current_selected_item.GetDirection() &&
+                    //console.log("direction",entity.GetDirection(), this.current_selected_item.GetDirection())
+                    if(entity.GetDirection() == this.current_selected_item.GetDirection() &&
                        entity.properties.name == this.current_selected_item.properties.name){
                         result.SameType = false;
-                    }*/
+                    }
                 }
             }
         }
@@ -270,9 +274,16 @@ export class Editor{
             
             let entity_name = this.current_selected_item.properties.name;
             let direction = this.current_selected_item.GetDirection();
+
+           
+            let grid_size = {
+                 x: this.current_selected_item.properties.grid_size.x,
+                 y: this.current_selected_item.properties.grid_size.y
+            }
             this.current_selected_item = new Entity(this.GetNextID(), this.mouse_grid_position.Copy());
             this.current_selected_item.LoadFromData(entity_name);
             this.current_selected_item.SetDirection(direction);
+            this.current_selected_item.properties.grid_size = new Point(grid_size.x, grid_size.y);
            // console.log("placed");   
            // console.log(this.grid);
         }
