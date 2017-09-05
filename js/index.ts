@@ -4,12 +4,23 @@ import {DrawHelper} from "./DrawHelper"
 import {InputManager} from "./InputManager"
 import {KeyBindings} from "./InputManager"
 import {Data, Entity} from "./Entity"
+import {Grid} from "./Grid"
 
-const COLOR_SCHEME = {
+export const COLOR_SCHEME = {
     background: "#282c34",
     borders: "#4f5052",
     crosshair: "#e0e0e0",
 };
+export const OPTIONS = {
+    GRID_SIZE: 40,
+    ENTITY_SCALEUP: 10,
+    SQUARES_WIDE: 100,
+    SQUARES_HIGH: 100,
+    BORDER_WIDTH: 4,
+    FONT_SIZE: 25,
+    CAMERA_MOVE_SPEED: 10,
+    CURRENT_SELECTED_ITEM_OPACITY: .5
+}
 
 enum LINE_SNAP{
     None,
@@ -18,53 +29,59 @@ enum LINE_SNAP{
 }
 
 export class Editor{
-    static readonly GRID_SIZE = 40;
+    /*static readonly GRID_SIZE = 40;
     static readonly ENTITY_SCALEUP = 10;
     static readonly SQUARES_WIDE = 100;
     static readonly SQUARES_HIGH = 100;
     static readonly BORDER_WIDTH = 4;
     static readonly FONT_SIZE = 25;
     static readonly CAMERA_MOVE_SPEED = 10;
-    static readonly CURRENT_SELECTED_ITEM_OPACITY = .5;
+    static readonly CURRENT_SELECTED_ITEM_OPACITY = .5;*/
 
-    private static canvas: HTMLCanvasElement;
-    private static ctx: CanvasRenderingContext2D;
+    private static _canvas: HTMLCanvasElement;
+    private static _ctx: CanvasRenderingContext2D;
 
-    private static menu: HTMLDivElement;
-    private static menu_button: HTMLDivElement;
-    private static import_button: HTMLDivElement;
-    private static export_button: HTMLDivElement;
+    private static _menu: HTMLDivElement;
+    private static _menu_button: HTMLDivElement;
+    private static _import_button: HTMLDivElement;
+    private static _export_button: HTMLDivElement;
 
 
-    static last_mouse_grid_position: Point = new Point(0,0);
-    static mouse_grid_position: Point = new Point(0,0);
+    private static _last_mouse_grid_position: Point = new Point(0,0);
+    private static _mouse_grid_position: Point = new Point(0,0);
+    static get mouse_grid_position(): Point{
+        return this._mouse_grid_position;
+    }
 
-    static current_selected_item: Entity;
 
-    static line_snap_type: LINE_SNAP;
+    private static _current_selected_item: Entity;
 
-    static unused_ids: number[] = [];
-    static entities: Entity[] = [];
-    static global_animators: Animator[] = [];
+    private static _line_snap_type: LINE_SNAP;
 
+    private static _unused_ids: number[] = [];
+    private static _entities: Entity[] = [];
+    private static _global_animators: Animator[] = [];
+
+    private static _grid: Grid;
+    
     
     static grid: number[][];
     
-    static Init = function(){      
-        this.canvas = document.getElementById("editorCanvas");
-        this.ctx = this.canvas.getContext("2d");
+    static Init(){      
+        this._canvas = document.getElementById("editorCanvas") as HTMLCanvasElement;
+        this._ctx = this._canvas.getContext("2d");
 
-        this.menu_button = document.getElementById("menuButton");
-        this.menu_button.onclick = function(){
+        this._menu_button = document.getElementById("menuButton") as HTMLDivElement;
+        this._menu_button.onclick = function(){
             Editor.ToggleMenu();
         }
         //Setup any styling
-        this.canvas.style.backgroundColor=COLOR_SCHEME.background;
+        this._canvas.style.backgroundColor=COLOR_SCHEME.background;
 
-        this.canvas.oncontextmenu = function (e) {
+        this._canvas.oncontextmenu = function (e) {
             e.preventDefault();
         };
-        this.canvas.onclick = function(){
+        this._canvas.onclick = function(){
             Editor.CloseMenu();
         }
 
@@ -73,82 +90,93 @@ export class Editor{
         this.LoadBlueprint(test);
 
         InputManager.AddKeyEvent(false, KeyBindings.DropItem, ()=>{
-            this.current_selected_item = undefined;
+            this._current_selected_item = undefined;
         });
         InputManager.AddKeyEvent(false, KeyBindings.Rotate, ()=>{
-            if(this.current_selected_item){
-                this.current_selected_item.Rotate();
+            if(this._current_selected_item){
+                this._current_selected_item.Rotate();
             }
         });
         
+        this._grid = new Grid(
+            OPTIONS.GRID_SIZE, 
+            new Point(this._canvas.width, this._canvas.height),
+            OPTIONS.BORDER_WIDTH,
+            COLOR_SCHEME.borders,
+            COLOR_SCHEME.crosshair,
+            COLOR_SCHEME.background,
+            OPTIONS.FONT_SIZE
+        )
+
+
         this.CreateMenu();
         this.CreateGrid();
         this.Resize();
 
         Data.LoadImages();
     }
-    static Update = function(){
+    static Update(){
      
         //Handle line snap
         if(InputManager.IsKeyDown(KeyBindings.LineSnap)){
-            if(this.line_snap_type == LINE_SNAP.None){
-                let diff = this.mouse_grid_position.SubtractC(this.last_mouse_grid_position);
+            if(this._line_snap_type == LINE_SNAP.None){
+                let diff = this._mouse_grid_position.SubtractC(this._last_mouse_grid_position);
                 if(diff.x != 0){
-                    this.line_snap_type = LINE_SNAP.Horizontal;
+                    this._line_snap_type = LINE_SNAP.Horizontal;
                 }
                 if(diff.y != 0){
-                    this.line_snap_type = LINE_SNAP.Vertical
+                    this._line_snap_type = LINE_SNAP.Vertical
                 }
             }
         }
         else{
-            this.line_snap_type = LINE_SNAP.None;
+            this._line_snap_type = LINE_SNAP.None;
         }
         
-        this.last_mouse_grid_position = this.mouse_grid_position.Copy();
-        this.mouse_grid_position = this.ScreenToGridCoords(InputManager.mouse_position);
-        this.mouse_grid_position.Clamp(
+        this._last_mouse_grid_position = this._mouse_grid_position.Copy();
+        this._mouse_grid_position = this.ScreenToGridCoords(InputManager.mouse_position);
+        this._mouse_grid_position.Clamp(
             {x: 1, y: 1},
-            {x: this.SQUARES_WIDE, y: this.SQUARES_HIGH}
+            {x: OPTIONS.SQUARES_WIDE, y: OPTIONS.SQUARES_HIGH}
         )
 
-        if(this.line_snap_type == LINE_SNAP.Horizontal){
-            this.mouse_grid_position.y = this.last_mouse_grid_position.y;
+        if(this._line_snap_type == LINE_SNAP.Horizontal){
+            this._mouse_grid_position.y = this._last_mouse_grid_position.y;
         }
-        else if(this.line_snap_type == LINE_SNAP.Vertical){
-            this.mouse_grid_position.x = this.last_mouse_grid_position.x;
+        else if(this._line_snap_type == LINE_SNAP.Vertical){
+            this._mouse_grid_position.x = this._last_mouse_grid_position.x;
         }
 
 
 
-        DrawHelper.ClearScreen(this.ctx);
+        DrawHelper.ClearScreen(this._ctx);
 
     
         //Handle Camera Movement
         if(InputManager.IsKeyDown(KeyBindings.MoveRight)){
-            DrawHelper.camera_position.Add({x: this.CAMERA_MOVE_SPEED, y:0});
+            DrawHelper.camera_position.Add({x: OPTIONS.CAMERA_MOVE_SPEED, y:0});
         }
         else if(InputManager.IsKeyDown(KeyBindings.MoveLeft)){
-            DrawHelper.camera_position.Add({x: -this.CAMERA_MOVE_SPEED, y:0});
+            DrawHelper.camera_position.Add({x: -OPTIONS.CAMERA_MOVE_SPEED, y:0});
         }
 
         if(InputManager.IsKeyDown(KeyBindings.MoveDown)){
-            DrawHelper.camera_position.Add({x: 0, y: this.CAMERA_MOVE_SPEED});
+            DrawHelper.camera_position.Add({x: 0, y: OPTIONS.CAMERA_MOVE_SPEED});
         }
         else if(InputManager.IsKeyDown(KeyBindings.MoveUp)){
-            DrawHelper.camera_position.Add({x: 0, y: -this.CAMERA_MOVE_SPEED});
+            DrawHelper.camera_position.Add({x: 0, y: -OPTIONS.CAMERA_MOVE_SPEED});
         }
 
         DrawHelper.camera_position.Clamp(
             { x: 0, y: 0},
             {
-                x: this.GRID_SIZE*this.SQUARES_WIDE - this.canvas.width,
-                y: this.GRID_SIZE*this.SQUARES_HIGH - this.canvas.height  
+                x: OPTIONS.GRID_SIZE*OPTIONS.SQUARES_WIDE - this._canvas.width,
+                y: OPTIONS.GRID_SIZE*OPTIONS.SQUARES_HIGH - this._canvas.height  
             }
         )
 
         //Handle Placement
-        if(this.current_selected_item && InputManager.IsMouseDown(0)){
+        if(this._current_selected_item && InputManager.IsMouseDown(0)){
             this.TryPlace();
         }
         if(InputManager.IsMouseDown(2)){
@@ -156,46 +184,48 @@ export class Editor{
         }
         if(InputManager.IsMouseDown(1)){
             console.log(this.grid);
-            console.log(this.entities);
-            console.log(this.unused_ids);
+            console.log(this._entities);
+            console.log(this._unused_ids);
         }
     
-        this.DrawCrosshairs();
+        this._grid.DrawCrosshairs(this._ctx);
         this.DrawGrid();
 
-        for(let key in this.global_animators){
-            let animator = this.global_animators[key];
+        for(let key in this._global_animators){
+            let animator = this._global_animators[key];
             animator.Update();
         }
 
-        for(let entity of this.entities){
+        for(let entity of this._entities){
             if(entity){
-                entity.Draw(this.ctx, 1);
+                entity.Draw(this._ctx, 1);
             }
         }
 
-        if(this.current_selected_item){
-            this.current_selected_item.position = this.mouse_grid_position.Copy();
-            this.current_selected_item.Draw(this.ctx, this.CURRENT_SELECTED_ITEM_OPACITY);
+        if(this._current_selected_item){
+            this._current_selected_item.position = this._mouse_grid_position.Copy();
+            this._current_selected_item.Draw(this._ctx, OPTIONS.CURRENT_SELECTED_ITEM_OPACITY);
         }
-        this.DrawRulers();
+
+        this._grid.DrawRulers(this._ctx);
     }
 
 
 
-    static TryRemove = function(){
-        if(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y] !== undefined){
-            let id = this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y];
+    static TryRemove(){
+        
+        if(this.grid[this._mouse_grid_position.x][this._mouse_grid_position.y] !== undefined){
+            let id = this.grid[this._mouse_grid_position.x][this._mouse_grid_position.y];
             
-            let entity = this.entities.filter((value)=>{
+            let entity = this._entities.filter((value)=>{
                 if(value){
                     return value.id == id;
                 }
             })[0];
 
-            let index = this.entities.indexOf(entity);
+            let index = this._entities.indexOf(entity);
             if(index > -1){
-                this.entities[index] = undefined;
+                this._entities[index] = undefined;
                 console.log("Removed entity: "+entity.id);
             }
 
@@ -206,34 +236,34 @@ export class Editor{
                     }
                 }
             }
-            this.unused_ids.push(id);
+            this._unused_ids.push(id);
             console.log(entity);
         }
 
     }
-    static IsClear = function(){
+    static IsClear(){
         let result = {
             SameType: true,
             Empty: true,
         }
-        for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
-            for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
-                if(this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y] != undefined){
+        for(let x = 0; x<this._current_selected_item.properties.grid_size.x; x++){
+            for(let y = 0; y<this._current_selected_item.properties.grid_size.y; y++){
+                if(this.grid[this._mouse_grid_position.x+x][this._mouse_grid_position.y+y] != undefined){
                     result.Empty = false;
 
-                    let id = this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y];
-                    let entity: Entity = this.entities.filter((value)=>{
+                    let id = this.grid[this._mouse_grid_position.x+x][this._mouse_grid_position.y+y];
+                    let entity: Entity = this._entities.filter((value)=>{
                         if(value){
                             return value.id == id;
                         }
                     })[0];
 
                     console.log(entity.properties.type);
-                    if(entity.properties.type != this.current_selected_item.properties.type){
+                    if(entity.properties.type != this._current_selected_item.properties.type){
                         result.SameType = false;
                     }
                    // console.log(entity.position)
-                    if(!entity.position.Equals(this.current_selected_item.position)){
+                    if(!entity.position.Equals(this._current_selected_item.position)){
                         result.SameType = false;
                     }
 
@@ -242,8 +272,8 @@ export class Editor{
                     }
                     //Prevent placing over the exact same block
                     //console.log("direction",entity.GetDirection(), this.current_selected_item.GetDirection())
-                    if(entity.GetDirection() == this.current_selected_item.GetDirection() &&
-                       entity.properties.name == this.current_selected_item.properties.name){
+                    if(entity.GetDirection() == this._current_selected_item.GetDirection() &&
+                       entity.properties.name == this._current_selected_item.properties.name){
                         result.SameType = false;
                     }
                 }
@@ -251,39 +281,39 @@ export class Editor{
         }
         return result;
     }
-    static TryPlace = function(){
+    static TryPlace(){
 
-        if(this.menu.classList.contains("open")) return;
+        if(this._menu.classList.contains("open")) return;
        // console.log("Trying place at "+ this.mouse_grid_position.x);
        // console.log(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]);
         let is_clear = this.IsClear();
         if(is_clear.Empty){            
             console.log("-Space is empty");
 
-            for(let x = 0; x<this.current_selected_item.properties.grid_size.x; x++){
-                for(let y = 0; y<this.current_selected_item.properties.grid_size.y; y++){
+            for(let x = 0; x<this._current_selected_item.properties.grid_size.x; x++){
+                for(let y = 0; y<this._current_selected_item.properties.grid_size.y; y++){
                //     console.log("Placing element with id: "+this.current_selected_item.id);
                     
-                    this.grid[this.mouse_grid_position.x+x][this.mouse_grid_position.y+y] = this.current_selected_item.id;
+                    this.grid[this._mouse_grid_position.x+x][this._mouse_grid_position.y+y] = this._current_selected_item.id;
                     
                  //   console.log("Grid at spot now looks like "+this.grid)
                 }
             }
-            this.current_selected_item.position = this.mouse_grid_position;
-            this.entities[this.current_selected_item.id] = this.current_selected_item;
+            this._current_selected_item.position = this._mouse_grid_position;
+            this._entities[this._current_selected_item.id] = this._current_selected_item;
             
-            let entity_name = this.current_selected_item.properties.name;
-            let direction = this.current_selected_item.GetDirection();
+            let entity_name = this._current_selected_item.properties.name;
+            let direction = this._current_selected_item.GetDirection();
 
            
             let grid_size = {
-                 x: this.current_selected_item.properties.grid_size.x,
-                 y: this.current_selected_item.properties.grid_size.y
+                 x: this._current_selected_item.properties.grid_size.x,
+                 y: this._current_selected_item.properties.grid_size.y
             }
-            this.current_selected_item = new Entity(this.GetNextID(), this.mouse_grid_position.Copy());
-            this.current_selected_item.LoadFromData(entity_name);
-            this.current_selected_item.SetDirection(direction);
-            this.current_selected_item.properties.grid_size = new Point(grid_size.x, grid_size.y);
+            this._current_selected_item = new Entity(this.GetNextID(), this._mouse_grid_position.Copy());
+            this._current_selected_item.LoadFromData(entity_name);
+            this._current_selected_item.SetDirection(direction);
+            this._current_selected_item.properties.grid_size = new Point(grid_size.x, grid_size.y);
            // console.log("placed");   
            // console.log(this.grid);
         }
@@ -297,31 +327,31 @@ export class Editor{
         }
         //console.log(this.current_selected_item);
     }
-    static SelectItem = function(value: string){
+    static SelectItem(value: string){
         let id = this.GetNextID();
-        let new_entity = new Entity(id, this.mouse_grid_position);
+        let new_entity = new Entity(id, this._mouse_grid_position);
         new_entity.LoadFromData(value);
 
-        this.current_selected_item = new_entity; 
+        this._current_selected_item = new_entity; 
     }
 
 
 
+/*
 
-
-    static DrawCrosshairs = function(){
-        let crosshair_pos: Point = this.mouse_grid_position.ScaleC(this.GRID_SIZE);
+    static DrawCrosshairs(){
+        let crosshair_pos: Point = this._mouse_grid_position.ScaleC(OPTIONS.GRID_SIZE);
     
         //Horizontal
         DrawHelper.DrawRect(
-            this.ctx,
+            this._ctx,
             new Point(
                 DrawHelper.camera_position.x,
                 crosshair_pos.y
             ),
             new Point(
-                DrawHelper.camera_position.x + this.canvas.width,
-                this.GRID_SIZE
+                DrawHelper.camera_position.x + this._canvas.width,
+                OPTIONS.GRID_SIZE
             ),
             {
                 color:COLOR_SCHEME.crosshair
@@ -330,106 +360,109 @@ export class Editor{
 
         //Vertical
         DrawHelper.DrawRect(
-            this.ctx,
+            this._ctx,
             new Point(
                 crosshair_pos.x,
                 DrawHelper.camera_position.y,
             ),
             new Point(
-                this.GRID_SIZE,
-                DrawHelper.camera_position.y + this.canvas.height,
+                OPTIONS.GRID_SIZE,
+                DrawHelper.camera_position.y + this._canvas.height,
             ),
             {
                 color:COLOR_SCHEME.crosshair
             }
         );
-    }
-    static GetNextID = function(): number{
-        let id = (this.unused_ids.length > 0)?this.unused_ids.pop():this.entities.length;   
+    }*/
+
+    static GetNextID(): number{
+        let id = (this._unused_ids.length > 0)?this._unused_ids.pop():this._entities.length;   
         console.log("Assigning ID: "+id);
         return id; 
     }
-    static CreateGrid = function(){
+    static CreateGrid(){
         this.grid = [];
-        for(let i = 0; i<this.SQUARES_WIDE; i++){
+        for(let i = 0; i<OPTIONS.SQUARES_WIDE; i++){
             this.grid[i] = [];
         }
     }
-    static DrawGrid = function(){
+    static DrawGrid(){
         //Vertical Lines
-        for(let x = 1; x<this.SQUARES_WIDE; x++){
-            let x_pos = x*this.GRID_SIZE;
+        for(let x = 1; x<OPTIONS.SQUARES_WIDE; x++){
+            let x_pos = x*OPTIONS.GRID_SIZE;
 
             //Draw Lines
             DrawHelper.DrawLine(
-                this.ctx, 
+                this._ctx, 
                 new Point(x_pos, 0),
-                new Point(x_pos, this.GRID_SIZE*this.SQUARES_HIGH),
+                new Point(x_pos, OPTIONS.GRID_SIZE*OPTIONS.SQUARES_HIGH),
                 {
-                    line_width: this.BORDER_WIDTH,
+                    line_width: OPTIONS.BORDER_WIDTH,
                     color: COLOR_SCHEME.borders
                 }
             );
         }
         //Horizontal Lines
-        for(let y = 1; y<this.SQUARES_HIGH; y++){
-            let y_pos = y*this.GRID_SIZE;
+        for(let y = 1; y<OPTIONS.SQUARES_HIGH; y++){
+            let y_pos = y*OPTIONS.GRID_SIZE;
 
 
             DrawHelper.DrawLine(
-                this.ctx, 
+                this._ctx, 
                 new Point(0, y_pos),
-                new Point(this.GRID_SIZE*this.SQUARES_WIDE, y_pos),
+                new Point(OPTIONS.GRID_SIZE*OPTIONS.SQUARES_WIDE, y_pos),
                 {
-                    line_width: this.BORDER_WIDTH,
+                    line_width: OPTIONS.BORDER_WIDTH,
                     color: COLOR_SCHEME.borders
                 }
             );
         }
-    }   
+    } 
+    
+    /*
     static DrawRulers(){
-        let text_centering_factor = (this.GRID_SIZE - this.FONT_SIZE)/2;
+        let text_centering_factor = (OPTIONS.GRID_SIZE - OPTIONS.FONT_SIZE)/2;
         
         DrawHelper.DrawRect(
-            this.ctx,
+            this._ctx,
             new Point(DrawHelper.camera_position.x,DrawHelper.camera_position.y),
-            new Point(this.canvas.width, this.GRID_SIZE),
+            new Point(this._canvas.width, OPTIONS.GRID_SIZE),
             {
                 color:COLOR_SCHEME.background
             }
         )
         DrawHelper.DrawRect(
-            this.ctx,
+            this._ctx,
             new Point(DrawHelper.camera_position.x,DrawHelper.camera_position.y),
-            new Point(this.GRID_SIZE, this.canvas.height),
+            new Point(OPTIONS.GRID_SIZE, this._canvas.height),
             {
                 color:COLOR_SCHEME.background
             }
         )
         //Draw Numbers horizontal
-        for(let x = 1; x<this.SQUARES_WIDE; x++){
-            let x_pos = x*this.GRID_SIZE;
+        for(let x = 1; x<OPTIONS.SQUARES_WIDE; x++){
+            let x_pos = x*OPTIONS.GRID_SIZE;
     
 
             DrawHelper.DrawText(
-                this.ctx, 
+                this._ctx, 
                 new Point(
                     x_pos+text_centering_factor, 
-                    this.FONT_SIZE+text_centering_factor - 5 + DrawHelper.camera_position.y
+                    OPTIONS.FONT_SIZE+text_centering_factor - 5 + DrawHelper.camera_position.y
                 ),
                 ("0"+x).slice(-2),
                 {
                     color: COLOR_SCHEME.borders,
-                    font: "700 "+this.FONT_SIZE+"px Share Tech Mono"
+                    font: "700 "+OPTIONS.FONT_SIZE+"px Share Tech Mono"
                 }
             );
             DrawHelper.DrawLine(
-                this.ctx,
-                new Point(x_pos+this.GRID_SIZE, DrawHelper.camera_position.y),
-                new Point(x_pos+this.GRID_SIZE, DrawHelper.camera_position.y + this.GRID_SIZE),
+                this._ctx,
+                new Point(x_pos+OPTIONS.GRID_SIZE, DrawHelper.camera_position.y),
+                new Point(x_pos+OPTIONS.GRID_SIZE, DrawHelper.camera_position.y + OPTIONS.GRID_SIZE),
                 {
                     color: COLOR_SCHEME.borders,
-                    line_width: this.BORDER_WIDTH
+                    line_width: OPTIONS.BORDER_WIDTH
                 }
             )
             
@@ -437,37 +470,37 @@ export class Editor{
 
 
         //Draw Numbers vertical
-        for(let y = 1; y<this.SQUARES_HIGH; y++){
-            let y_pos = y*this.GRID_SIZE;
+        for(let y = 1; y<OPTIONS.SQUARES_HIGH; y++){
+            let y_pos = y*OPTIONS.GRID_SIZE;
 
             DrawHelper.DrawText(
-                this.ctx, 
+                this._ctx, 
                 new Point(
                     text_centering_factor + DrawHelper.camera_position.x, 
-                    y_pos+this.FONT_SIZE+text_centering_factor - 5
+                    y_pos+OPTIONS.FONT_SIZE+text_centering_factor - 5
                 ),
                 ("0"+y).slice(-2),
                 {
                     color: COLOR_SCHEME.borders,
-                    font: "700 "+this.FONT_SIZE+"px Share Tech Mono"
+                    font: "700 "+OPTIONS.FONT_SIZE+"px Share Tech Mono"
                 }
             );
             DrawHelper.DrawLine(
-                this.ctx,
-                new Point(DrawHelper.camera_position.x, y_pos+this.GRID_SIZE),
-                new Point(DrawHelper.camera_position.x + this.GRID_SIZE, y_pos+this.GRID_SIZE),
+                this._ctx,
+                new Point(DrawHelper.camera_position.x, y_pos+OPTIONS.GRID_SIZE),
+                new Point(DrawHelper.camera_position.x + OPTIONS.GRID_SIZE, y_pos+OPTIONS.GRID_SIZE),
                 {
                     color: COLOR_SCHEME.borders,
-                    line_width: this.BORDER_WIDTH
+                    line_width: OPTIONS.BORDER_WIDTH
                 }
             )
         }
 
         //Little square in top left to hide overlapping numbers
         DrawHelper.DrawRect(
-            this.ctx,
+            this._ctx,
             new Point(DrawHelper.camera_position.x,DrawHelper.camera_position.y),
-            new Point(this.GRID_SIZE, this.GRID_SIZE),
+            new Point(OPTIONS.GRID_SIZE, OPTIONS.GRID_SIZE),
             {
                 color:COLOR_SCHEME.background
             }
@@ -475,36 +508,36 @@ export class Editor{
 
         //Bottom border below numbers
         DrawHelper.DrawLine(
-            this.ctx,
-            new Point(DrawHelper.camera_position.x, DrawHelper.camera_position.y+this.GRID_SIZE),
-            new Point(DrawHelper.camera_position.x+this.canvas.width, DrawHelper.camera_position.y+this.GRID_SIZE),
+            this._ctx,
+            new Point(DrawHelper.camera_position.x, DrawHelper.camera_position.y+OPTIONS.GRID_SIZE),
+            new Point(DrawHelper.camera_position.x+this._canvas.width, DrawHelper.camera_position.y+OPTIONS.GRID_SIZE),
             {
                 color:COLOR_SCHEME.borders,
-                line_width: this.BORDER_WIDTH
+                line_width: OPTIONS.BORDER_WIDTH
             }
         )
         //Right border to the right of numbers
         DrawHelper.DrawLine(
-            this.ctx,
-            new Point(DrawHelper.camera_position.x+this.GRID_SIZE, DrawHelper.camera_position.y),
-            new Point(DrawHelper.camera_position.x+this.GRID_SIZE, DrawHelper.camera_position.y+this.canvas.height),
+            this._ctx,
+            new Point(DrawHelper.camera_position.x+OPTIONS.GRID_SIZE, DrawHelper.camera_position.y),
+            new Point(DrawHelper.camera_position.x+OPTIONS.GRID_SIZE, DrawHelper.camera_position.y+this._canvas.height),
             {
                 color:COLOR_SCHEME.borders,
-                line_width: this.BORDER_WIDTH
+                line_width: OPTIONS.BORDER_WIDTH
             }
         )
     } 
+*/
 
 
 
-
-    static CreateMenu = function(){
+    static CreateMenu(){
         let accent_counter = 1;//Fancy tree colors
 
         InputManager.AddKeyEvent(false, KeyBindings.ToggleMenu, function(){
             Editor.ToggleMenu();
         })
-        this.menu = document.getElementById("menu");
+        this._menu = document.getElementById("menu") as HTMLDivElement;
         //create new ul for each menu type
         for(let type of Data.menu_types){
             let new_link = document.createElement("div");
@@ -525,8 +558,8 @@ export class Editor{
                     new_ul.classList.add("open");
                 }
             }
-            this.menu.appendChild(new_link);
-            this.menu.appendChild(new_ul);
+            this._menu.appendChild(new_link);
+            this._menu.appendChild(new_ul);
         }
     
 
@@ -540,25 +573,25 @@ export class Editor{
             document.getElementById(entity.menu_type).appendChild(new_li);
         }
     }
-    static ToggleMenu = function(){
-        if(this.menu.classList.contains("open")){
+    static ToggleMenu(){
+        if(this._menu.classList.contains("open")){
             this.CloseMenu();   
         }
         else{
-            this.menu.classList.add("open");
+            this._menu.classList.add("open");
         }
     }
-    static CloseMenu = function(){
-        this.menu.classList.remove("open");
+    static CloseMenu(){
+        this._menu.classList.remove("open");
     }
 
 
 
-    static Resize = function(){
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        this.canvas.style.height = window.innerHeight+"px";
-        this.canvas.style.width = window.innerWidth+"px";
+    static Resize(){
+        this._canvas.width = window.innerWidth;
+        this._canvas.height = window.innerHeight;
+        this._canvas.style.height = window.innerHeight+"px";
+        this._canvas.style.width = window.innerWidth+"px";
     }
 
 
@@ -567,8 +600,8 @@ export class Editor{
     }
     static CameraToGridCoords(p: Point): Point{
         return new Point(
-            Math.round(p.x / this.GRID_SIZE - .5),
-            Math.round(p.y / this.GRID_SIZE - .5)
+            Math.round(p.x / OPTIONS.GRID_SIZE - .5),
+            Math.round(p.y / OPTIONS.GRID_SIZE - .5)
         );
     }
     static ScreenToGridCoords(p: Point): Point{
@@ -603,6 +636,8 @@ export class Editor{
         }
     }
 }
+
+
 
 export class Animator{
     private current_frame: number;
