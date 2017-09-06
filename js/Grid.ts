@@ -5,8 +5,8 @@ import {Entity} from "./Entity"
 
 export class Grid{
     private _cells: number[][];
-    private _entities: Entity[];
-    private _unused_ids: number[];
+    private _entities: Entity[] = [];
+    private _unused_ids: number[] = [];
     private _grid_size: number;
     private _grid_dimensions: Point;
     private _border_width: number;
@@ -27,6 +27,12 @@ export class Grid{
         this._crosshair_color = crosshair_color;
         this._background_color = background_color;
         this._font_size = font_size;
+
+
+        this._cells = new Array(this._grid_dimensions.x);
+        for(let i = 0; i<this._grid_dimensions.x; i++){
+            this._cells[i] = new Array(this._grid_dimensions.y);
+        }
     }
 
     public Resize(draw_dimensions: Point){
@@ -135,7 +141,7 @@ export class Grid{
             new Point(DrawHelper.camera_position.x+this._grid_size, DrawHelper.camera_position.y+this._draw_dimensions.y),
             {
                 color:this._border_color,
-                line_width: this._grid_size
+                line_width: this._border_width
             }
         )
     }
@@ -207,6 +213,15 @@ export class Grid{
                 }
             );
         }
+
+
+        //Entities
+        
+        for(let entity of this._entities){
+            if(entity){
+                entity.Draw(ctx, 1);
+            }
+        }
     }
 
     public GetNextID(): number{
@@ -214,10 +229,90 @@ export class Grid{
         console.log("Assigning ID: "+id);
         return id; 
     }
-    public CreateGrid(){
-        this._cells = new Array(this._grid_dimensions.x);
-        for(let i = 0; i<this._grid_dimensions.x; i++){
-            this._cells[i] = new Array(this._grid_dimensions.y);
+
+    public IsClear(pos: Point,item: Entity){
+        let result = {
+            SameType: true,
+            Empty: true,
+        }
+        for(let x = 0; x<item.properties.grid_size.x; x++){
+            for(let y = 0; y<item.properties.grid_size.y; y++){
+
+                let entity = this.GetEntityAtPos(new Point(pos.x + x, pos.y + y));
+                if(entity!=null){
+
+                    result.Empty = false;
+                    console.log(entity.properties.type);
+                    if(entity.properties.type != item.properties.type){
+                        result.SameType = false;
+                    }
+                   // console.log(entity.position)
+                    if(!entity.position.Equals(item.position)){
+                        result.SameType = false;
+                    }
+
+                    if(entity.properties.grid_size.x != entity.properties.grid_size.y){
+                        result.SameType = false;
+                    }
+                    //Prevent placing over the exact same block
+                    //console.log("direction",entity.GetDirection(), this.current_selected_item.GetDirection())
+                    if(entity.GetDirection() == item.GetDirection() &&
+                       entity.properties.name == item.properties.name){
+                        result.SameType = false;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    public Place(entity: Entity, pos: Point){
+        for(let x = 0; x<entity.properties.grid_size.x; x++){
+            for(let y = 0; y<entity.properties.grid_size.y; y++){               
+                this._cells[pos.x+x][pos.y+y] = entity.id;
+            }
+        }
+        console.log("Gid place entity with id: "+entity.id);
+        entity.position = pos;
+        this._entities[entity.id] = entity;
+    }
+    public GetEntityAtPos(pos: Point): Entity{
+        if(this._cells[pos.x][pos.y] !== undefined){
+            let id = this._cells[pos.x][pos.y];
+            let entity = this._entities.filter((value) =>{
+                if(value){
+                    return value.id == id;
+                }
+            })[0];
+            return entity;
+        }
+        else{
+            return null;
+        }
+    }
+    public Remove(entity: Entity){  
+        let index = this._entities.indexOf(entity);
+        if(index > -1){
+            this._entities[index] = undefined;
+            //console.log(this._entities)
+            //console.log("Removed entity: "+entity.id+" at index "+index);
+        }
+        //console.log(this._cells);
+
+        for(var i = 0; i<this._cells.length; i++){
+            for(var x = 0; x<this._cells[i].length; x++){
+                if(this._cells[i][x] == entity.id){
+                    this._cells[i][x] = undefined;
+                }
+            }
+        }
+        this._unused_ids.push(entity.id);
+        //console.log(entity);
+    }  
+    public RemoveAtPos(pos: Point){
+        let remove_entity = this.GetEntityAtPos(pos);
+        if(remove_entity != null){
+            this.Remove(remove_entity);
+            //console.log(remove_entity);
         }
     }
 }

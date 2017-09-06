@@ -14,8 +14,8 @@ export const COLOR_SCHEME = {
 export const OPTIONS = {
     GRID_SIZE: 40,
     ENTITY_SCALEUP: 10,
-    SQUARES_WIDE: 100,
-    SQUARES_HIGH: 100,
+    SQUARES_WIDE: 50,
+    SQUARES_HIGH: 50,
     BORDER_WIDTH: 4,
     FONT_SIZE: 25,
     CAMERA_MOVE_SPEED: 10,
@@ -31,8 +31,8 @@ enum LINE_SNAP{
 export class Editor{
     /*static readonly GRID_SIZE = 40;
     static readonly ENTITY_SCALEUP = 10;
-    static readonly SQUARES_WIDE = 100;
-    static readonly SQUARES_HIGH = 100;
+    static readonly SQUARES_WIDE = 30;
+    static readonly SQUARES_HIGH = 30;
     static readonly BORDER_WIDTH = 4;
     static readonly FONT_SIZE = 25;
     static readonly CAMERA_MOVE_SPEED = 10;
@@ -100,7 +100,7 @@ export class Editor{
         
         this._grid = new Grid(
             OPTIONS.GRID_SIZE, 
-            new Point(this._canvas.width, this._canvas.height),
+            new Point(OPTIONS.SQUARES_WIDE, OPTIONS.SQUARES_HIGH),
             OPTIONS.BORDER_WIDTH,
             COLOR_SCHEME.borders,
             COLOR_SCHEME.crosshair,
@@ -110,7 +110,6 @@ export class Editor{
 
 
         this.CreateMenu();
-        this.CreateGrid();
         this.Resize();
 
         Data.LoadImages();
@@ -183,24 +182,17 @@ export class Editor{
             this.TryRemove();
         }
         if(InputManager.IsMouseDown(1)){
-            console.log(this.grid);
-            console.log(this._entities);
-            console.log(this._unused_ids);
+            console.log(this._grid);
         }
     
         this._grid.DrawCrosshairs(this._ctx);
-        this.DrawGrid();
+        this._grid.DrawGrid(this._ctx);
 
         for(let key in this._global_animators){
             let animator = this._global_animators[key];
             animator.Update();
         }
 
-        for(let entity of this._entities){
-            if(entity){
-                entity.Draw(this._ctx, 1);
-            }
-        }
 
         if(this._current_selected_item){
             this._current_selected_item.position = this._mouse_grid_position.Copy();
@@ -213,104 +205,28 @@ export class Editor{
 
 
     static TryRemove(){
-        
-        if(this.grid[this._mouse_grid_position.x][this._mouse_grid_position.y] !== undefined){
-            let id = this.grid[this._mouse_grid_position.x][this._mouse_grid_position.y];
-            
-            let entity = this._entities.filter((value)=>{
-                if(value){
-                    return value.id == id;
-                }
-            })[0];
-
-            let index = this._entities.indexOf(entity);
-            if(index > -1){
-                this._entities[index] = undefined;
-                console.log("Removed entity: "+entity.id);
-            }
-
-            for(var i = 0; i<this.grid.length; i++){
-                for(var x = 0; x<this.grid[i].length; x++){
-                    if(this.grid[i][x] == id){
-                        this.grid[i][x] = undefined;
-                    }
-                }
-            }
-            this._unused_ids.push(id);
-            console.log(entity);
-        }
-
-    }
-    static IsClear(){
-        let result = {
-            SameType: true,
-            Empty: true,
-        }
-        for(let x = 0; x<this._current_selected_item.properties.grid_size.x; x++){
-            for(let y = 0; y<this._current_selected_item.properties.grid_size.y; y++){
-                if(this.grid[this._mouse_grid_position.x+x][this._mouse_grid_position.y+y] != undefined){
-                    result.Empty = false;
-
-                    let id = this.grid[this._mouse_grid_position.x+x][this._mouse_grid_position.y+y];
-                    let entity: Entity = this._entities.filter((value)=>{
-                        if(value){
-                            return value.id == id;
-                        }
-                    })[0];
-
-                    console.log(entity.properties.type);
-                    if(entity.properties.type != this._current_selected_item.properties.type){
-                        result.SameType = false;
-                    }
-                   // console.log(entity.position)
-                    if(!entity.position.Equals(this._current_selected_item.position)){
-                        result.SameType = false;
-                    }
-
-                    if(entity.properties.grid_size.x != entity.properties.grid_size.y){
-                        result.SameType = false;
-                    }
-                    //Prevent placing over the exact same block
-                    //console.log("direction",entity.GetDirection(), this.current_selected_item.GetDirection())
-                    if(entity.GetDirection() == this._current_selected_item.GetDirection() &&
-                       entity.properties.name == this._current_selected_item.properties.name){
-                        result.SameType = false;
-                    }
-                }
-            }
-        }
-        return result;
+        this._grid.RemoveAtPos(this.mouse_grid_position.Copy());
     }
     static TryPlace(){
 
         if(this._menu.classList.contains("open")) return;
        // console.log("Trying place at "+ this.mouse_grid_position.x);
        // console.log(this.grid[this.mouse_grid_position.x][this.mouse_grid_position.y]);
-        let is_clear = this.IsClear();
+        let is_clear = this._grid.IsClear(this.mouse_grid_position.Copy(), this._current_selected_item);
         if(is_clear.Empty){            
             console.log("-Space is empty");
 
-            for(let x = 0; x<this._current_selected_item.properties.grid_size.x; x++){
-                for(let y = 0; y<this._current_selected_item.properties.grid_size.y; y++){
-               //     console.log("Placing element with id: "+this.current_selected_item.id);
-                    
-                    this.grid[this._mouse_grid_position.x+x][this._mouse_grid_position.y+y] = this._current_selected_item.id;
-                    
-                 //   console.log("Grid at spot now looks like "+this.grid)
-                }
-            }
-            this._current_selected_item.position = this._mouse_grid_position;
-            this._entities[this._current_selected_item.id] = this._current_selected_item;
+            this._grid.Place(this._current_selected_item, this._mouse_grid_position.Copy());
             
             let entity_name = this._current_selected_item.properties.name;
             let direction = this._current_selected_item.GetDirection();
-
-           
+       
             let grid_size = {
                  x: this._current_selected_item.properties.grid_size.x,
                  y: this._current_selected_item.properties.grid_size.y
             }
-            this._current_selected_item = new Entity(this.GetNextID(), this._mouse_grid_position.Copy());
+            let new_id = this._grid.GetNextID();
+            this._current_selected_item = new Entity(new_id, this._mouse_grid_position.Copy());
             this._current_selected_item.LoadFromData(entity_name);
             this._current_selected_item.SetDirection(direction);
             this._current_selected_item.properties.grid_size = new Point(grid_size.x, grid_size.y);
@@ -328,96 +244,18 @@ export class Editor{
         //console.log(this.current_selected_item);
     }
     static SelectItem(value: string){
-        let id = this.GetNextID();
-        let new_entity = new Entity(id, this._mouse_grid_position);
+        let id = this._grid.GetNextID();
+        let new_entity = new Entity(id, this._mouse_grid_position.Copy());
         new_entity.LoadFromData(value);
 
         this._current_selected_item = new_entity; 
     }
-
-
-
-/*
-
-    static DrawCrosshairs(){
-        let crosshair_pos: Point = this._mouse_grid_position.ScaleC(OPTIONS.GRID_SIZE);
-    
-        //Horizontal
-        DrawHelper.DrawRect(
-            this._ctx,
-            new Point(
-                DrawHelper.camera_position.x,
-                crosshair_pos.y
-            ),
-            new Point(
-                DrawHelper.camera_position.x + this._canvas.width,
-                OPTIONS.GRID_SIZE
-            ),
-            {
-                color:COLOR_SCHEME.crosshair
-            }
-        );
-
-        //Vertical
-        DrawHelper.DrawRect(
-            this._ctx,
-            new Point(
-                crosshair_pos.x,
-                DrawHelper.camera_position.y,
-            ),
-            new Point(
-                OPTIONS.GRID_SIZE,
-                DrawHelper.camera_position.y + this._canvas.height,
-            ),
-            {
-                color:COLOR_SCHEME.crosshair
-            }
-        );
-    }*/
-
-    static GetNextID(): number{
-        let id = (this._unused_ids.length > 0)?this._unused_ids.pop():this._entities.length;   
-        console.log("Assigning ID: "+id);
-        return id; 
+    static GetAnimator(anim: string): Animator{
+        return this._global_animators[anim];
     }
-    static CreateGrid(){
-        this.grid = [];
-        for(let i = 0; i<OPTIONS.SQUARES_WIDE; i++){
-            this.grid[i] = [];
-        }
+    static AddAnimator(anim: Animator, name: string){
+        this._global_animators[name] = anim;
     }
-    static DrawGrid(){
-        //Vertical Lines
-        for(let x = 1; x<OPTIONS.SQUARES_WIDE; x++){
-            let x_pos = x*OPTIONS.GRID_SIZE;
-
-            //Draw Lines
-            DrawHelper.DrawLine(
-                this._ctx, 
-                new Point(x_pos, 0),
-                new Point(x_pos, OPTIONS.GRID_SIZE*OPTIONS.SQUARES_HIGH),
-                {
-                    line_width: OPTIONS.BORDER_WIDTH,
-                    color: COLOR_SCHEME.borders
-                }
-            );
-        }
-        //Horizontal Lines
-        for(let y = 1; y<OPTIONS.SQUARES_HIGH; y++){
-            let y_pos = y*OPTIONS.GRID_SIZE;
-
-
-            DrawHelper.DrawLine(
-                this._ctx, 
-                new Point(0, y_pos),
-                new Point(OPTIONS.GRID_SIZE*OPTIONS.SQUARES_WIDE, y_pos),
-                {
-                    line_width: OPTIONS.BORDER_WIDTH,
-                    color: COLOR_SCHEME.borders
-                }
-            );
-        }
-    } 
     
     /*
     static DrawRulers(){
@@ -592,6 +430,10 @@ export class Editor{
         this._canvas.height = window.innerHeight;
         this._canvas.style.height = window.innerHeight+"px";
         this._canvas.style.width = window.innerWidth+"px";
+        this._grid.Resize(new Point(
+            this._canvas.width,
+            this._canvas.height
+        ));
     }
 
 

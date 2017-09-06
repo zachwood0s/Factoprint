@@ -1,5 +1,5 @@
 import {Point} from "./Utils"
-import {Editor, Animator} from "./index"
+import {Editor, Animator, OPTIONS} from "./index"
 import {DrawHelper} from "./DrawHelper"
 import {Data} from './Data';
 /*
@@ -121,13 +121,26 @@ export interface AnimationProperties{
 }
 
 class Entity{
-    id: number;
-    position: Point;
-    properties: Properties;
+    private _id: number;
+    get id(): number{
+        return this._id;
+    }
+
+    private _position: Point;
+    get position(): Point{
+        return this._position;
+    }
+    set position(value){
+        this._position = value;
+    }
+    private _properties: Properties;
+    get properties():Properties{
+        return this._properties;
+    }
 
     constructor(id:number, p: Point | {x: number, y:number}){
-        this.id = id;
-        this.position = new Point(p.x, p.y);
+        this._id = id;
+        this._position = new Point(p.x, p.y);
     }
     public LoadFromData(name: string){
         let data_entity = Data.entities.filter((value)=>{
@@ -135,17 +148,19 @@ class Entity{
         })[0];
 
         //Seems like kinda a hack deep-copy but we'll see if its really that slow
-        this.properties = JSON.parse(JSON.stringify(data_entity));    
+        this._properties = JSON.parse(JSON.stringify(data_entity));    
         
-        if(this.properties.animations){
-            for(let anim_key in this.properties.animations){
-                let anim = this.properties.animations[anim_key];
-                if(!Editor.global_animators[this.properties.name+"-"+anim_key]){
-                    Editor.global_animators[this.properties.name+"-"+anim_key] = 
+        if(this._properties.animations){
+            for(let anim_key in this._properties.animations){
+                let anim = this._properties.animations[anim_key];
+                if(!Editor.GetAnimator(this._properties.name+"-"+anim_key)){
+                    Editor.AddAnimator( 
                         new Animator(
                             anim.frame_count,
                             anim.ticks_per_frame
-                        );
+                        ),
+                        this._properties.name+"-"+anim_key
+                    );
                 }
             }
         }
@@ -157,8 +172,10 @@ class Entity{
 
        // console.log("Current anim: "+anim_key);
         //Source image location on sprite-map
+        let current_frame = Editor.GetAnimator(this._properties.name+"-"+anim_key).CurrentFrame();
+
         let s = new Point(
-            anim.width * Editor.global_animators[this.properties.name+"-"+anim_key].CurrentFrame(),
+            anim.width * current_frame,
             0
         )
         if(anim.source_shift){
@@ -172,17 +189,17 @@ class Entity{
         )
         
         //Destination dimensions
-        let dD = new Point(this.properties.grid_size.x, this.properties.grid_size.y)
-            .ScaleC(Editor.GRID_SIZE)
+        let dD = new Point(this._properties.grid_size.x, this._properties.grid_size.y)
+            .ScaleC(OPTIONS.GRID_SIZE)
             .AddC(
-                {x: Editor.ENTITY_SCALEUP, y: Editor.ENTITY_SCALEUP}
+                {x: OPTIONS.ENTITY_SCALEUP, y: OPTIONS.ENTITY_SCALEUP}
             );
 
         //Destinationi position
-        let d = this.position
-            .ScaleC(Editor.GRID_SIZE)
+        let d = this._position
+            .ScaleC(OPTIONS.GRID_SIZE)
             .SubtractC(
-                {x: Editor.ENTITY_SCALEUP/2, y:Editor.ENTITY_SCALEUP/2}
+                {x: OPTIONS.ENTITY_SCALEUP/2, y:OPTIONS.ENTITY_SCALEUP/2}
             );
 
         let mirrorX, mirrorY = false;
@@ -194,8 +211,8 @@ class Entity{
         let current_row = 0;
         let current_column = 0;
         if(anim.line_length){
-            current_row = Math.floor(Editor.global_animators[this.properties.name+"-"+anim_key].CurrentFrame()/anim.line_length);
-            current_column = Editor.global_animators[this.properties.name+"-"+anim_key].CurrentFrame()-(current_row * anim.line_length)
+            current_row = Math.floor(current_frame/anim.line_length);
+            current_column = current_frame-(current_row * anim.line_length)
             s.y = current_row * anim.height;
             s.x = current_column * anim.width;
         }
@@ -208,10 +225,10 @@ class Entity{
             d.y += anim.destination_shift.y;
         }
         if(anim.destination_dimensions){
-            dD.x = anim.destination_dimensions.width * Editor.GRID_SIZE;
-            dD.y = anim.destination_dimensions.height * Editor.GRID_SIZE;
+            dD.x = anim.destination_dimensions.width * OPTIONS.GRID_SIZE;
+            dD.y = anim.destination_dimensions.height * OPTIONS.GRID_SIZE;
             dD.Add(
-                {x: Editor.ENTITY_SCALEUP, y: Editor.ENTITY_SCALEUP}
+                {x: OPTIONS.ENTITY_SCALEUP, y: OPTIONS.ENTITY_SCALEUP}
             );
            // console.log(dD);
         }
@@ -234,39 +251,39 @@ class Entity{
     public Draw(ctx: CanvasRenderingContext2D, opacity: number){
         
         //Check to see if the multiple direction handling is required
-        if(this.properties.directions){
-            let current_direction = this.properties.directions[this.properties.directions.current_direction];
+        if(this._properties.directions){
+            let current_direction = this._properties.directions[this._properties.directions.current_direction];
             if(current_direction.animation){
-                let anim = this.properties.animations[current_direction.animation];
+                let anim = this._properties.animations[current_direction.animation];
                 this.DrawAnimation(ctx, opacity, anim, current_direction.animation);
             }
         }
     }
     public Rotate(){
-        if(this.properties.tags.indexOf("rotatable") > -1){
-            this.properties.directions.current_direction++;
-            if(this.properties.directions.current_direction >= this.properties.directions.direction_count){
-                this.properties.directions.current_direction = 0;
+        if(this._properties.tags.indexOf("rotatable") > -1){
+            this._properties.directions.current_direction++;
+            if(this._properties.directions.current_direction >= this._properties.directions.direction_count){
+                this._properties.directions.current_direction = 0;
             }
 
             //Gotta flip the grid size for oblong shapes
-            if(this.properties.grid_size.x != this.properties.grid_size.y){
-                let temp_x = this.properties.grid_size.x;
-                this.properties.grid_size.x = this.properties.grid_size.y;
-                this.properties.grid_size.y = temp_x;
-                console.log("current grid size",this.properties.grid_size);
+            if(this._properties.grid_size.x != this._properties.grid_size.y){
+                let temp_x = this._properties.grid_size.x;
+                this._properties.grid_size.x = this._properties.grid_size.y;
+                this._properties.grid_size.y = temp_x;
+                console.log("current grid size",this._properties.grid_size);
             }
         }
     }
     public GetDirection(): number{
-        if(this.properties.directions){
-            return this.properties.directions.current_direction;
+        if(this._properties.directions){
+            return this._properties.directions.current_direction;
         }
         return 0;
     }
     public SetDirection(dir: number){
-        if(this.properties.directions){
-            this.properties.directions.current_direction = dir; 
+        if(this._properties.directions){
+            this._properties.directions.current_direction = dir; 
         }
     }
         /*if(this.properties.animation){
