@@ -1,4 +1,5 @@
 # Factoprint
+## NOTE: This project is still a major work in progress. Do not expect anything to work the way you expect. I don't even have it running on a site yet.
 
 Factoprint is an online blueprinter for those times when you gotta satisfy that Cracktorio fix but don't have the game around.
 
