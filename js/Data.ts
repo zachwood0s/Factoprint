@@ -318,5 +318,17 @@ Data.entities.push({
     directions:{
         ...splitter_directions
     },
+    children:[
+        {
+            name:"transport-belt"
+        },
+        {
+            name:"transport-belt",
+            offset:{
+                x:0,
+                y:1
+            }
+        }
+    ],
     tags:["rotatable"]
 });

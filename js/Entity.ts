@@ -68,8 +68,8 @@ export interface Properties{
         y: number,
     }
     animations?:{
-        default: AnimationProperties
-        [key: string]: AnimationProperties
+        default: AnimationProperties,
+        [key: string]: AnimationProperties,
     }
     directions?:{
         current_direction: number,
@@ -79,7 +79,15 @@ export interface Properties{
             picture?: string,
         }
     }
-    tags:string[];
+    children?:{
+        name: string,
+        entity?: Entity,
+        offset?:{
+            x: number,
+            y: number,
+        }
+    }[],
+    tags:string[],
 }
 export interface AnimationProperties{
     file_name: string,
@@ -132,6 +140,18 @@ class Entity{
     }
     set position(value){
         this._position = value;
+
+        if(this._properties.children){
+            for(let i = 0; i<this._properties.children.length; i++){
+                let child = this._properties.children[i];
+                let new_value = value;
+                if(child.offset){               
+                    new_value = value.AddC(child.offset);
+                }
+                console.log(child);
+                child.entity._position = new_value;
+            }
+        }
     }
     private _properties: Properties;
     get properties():Properties{
@@ -162,6 +182,13 @@ class Entity{
                         this._properties.name+"-"+anim_key
                     );
                 }
+            }
+        }
+        if(this._properties.children){
+            for(let i = 0; i<this._properties.children.length; i++){
+                let new_entity = new Entity(-1, this.position);
+                new_entity.LoadFromData(this._properties.children[i].name);
+                this._properties.children[i].entity = new_entity;
             }
         }
         //console.log(Editor.global_animators)
@@ -250,9 +277,16 @@ class Entity{
     }
     public Draw(ctx: CanvasRenderingContext2D, opacity: number){
         
+        if(this._properties.children){
+            for(let i = 0; i<this._properties.children.length; i++){
+                this._properties.children[i].entity.Draw(ctx, opacity);
+            }
+        }
+
         //Check to see if the multiple direction handling is required
         if(this._properties.directions){
             let current_direction = this._properties.directions[this._properties.directions.current_direction];
+            
             if(current_direction.animation){
                 let anim = this._properties.animations[current_direction.animation];
                 this.DrawAnimation(ctx, opacity, anim, current_direction.animation);
@@ -261,6 +295,13 @@ class Entity{
     }
     public Rotate(){
         if(this._properties.tags.indexOf("rotatable") > -1){
+
+            if(this._properties.children){
+                for(let i = 0; i<this._properties.children.length; i++){
+                    this._properties.children[i].entity.Rotate();
+                }
+            }
+
             this._properties.directions.current_direction++;
             if(this._properties.directions.current_direction >= this._properties.directions.direction_count){
                 this._properties.directions.current_direction = 0;
@@ -273,6 +314,16 @@ class Entity{
                 this._properties.grid_size.y = temp_x;
                 console.log("current grid size",this._properties.grid_size);
             }
+            if(this._properties.children){
+                for(let i = 0; i<this._properties.children.length; i++){
+                    let child = this._properties.children[i];
+                    if(child.offset){
+                        let temp_x = child.offset.x;
+                        child.offset.x = child.offset.y;
+                        child.offset.y = temp_x;
+                    }
+                }
+            }
         }
     }
     public GetDirection(): number{
@@ -284,6 +335,11 @@ class Entity{
     public SetDirection(dir: number){
         if(this._properties.directions){
             this._properties.directions.current_direction = dir; 
+        }
+        if(this._properties.children){
+            for(let i = 0; i<this._properties.children.length; i++){
+                this._properties.children[i].entity.SetDirection(dir);
+            }
         }
     }
         /*if(this.properties.animation){

@@ -225,11 +225,19 @@ export class Editor{
                  x: this._current_selected_item.properties.grid_size.x,
                  y: this._current_selected_item.properties.grid_size.y
             }
+            let children = [];
+            if(this._current_selected_item.properties.children){
+                children = this._current_selected_item.properties.children;
+            }
             let new_id = this._grid.GetNextID();
             this._current_selected_item = new Entity(new_id, this._mouse_grid_position.Copy());
             this._current_selected_item.LoadFromData(entity_name);
             this._current_selected_item.SetDirection(direction);
             this._current_selected_item.properties.grid_size = new Point(grid_size.x, grid_size.y);
+
+            for(let i = 0; i<children.length; i++){
+                this._current_selected_item.properties.children[i].offset = children[i].offset;
+            }
            // console.log("placed");   
            // console.log(this.grid);
         }
